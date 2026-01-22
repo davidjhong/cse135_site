@@ -3,41 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSE 135 - Team Awesome</title>
+    <title>CSE 135 - Team X Home</title>
+    <link rel="stylesheet" href="styles.css">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <style>
-        body { font-family: sans-serif; max-width: 800px; margin: 40px auto; text-align: center; }
-        h1 { color: #333; }
-        .member-list { list-style: none; padding: 0; }
-        .member-link { 
-            display: inline-block; 
-            margin: 10px; 
-            padding: 10px 20px; 
-            background: #007bff; 
-            color: white; 
-            text-decoration: none; 
-            border-radius: 5px; 
-        }
-        .member-link:hover { background: #0056b3; }
-    </style>
 </head>
 <body>
-    <h1>Welcome to Team Awesome</h1>
-    <p>We are building cool stuff for CSE 135.</p>
 
-    <h2>Team Members</h2>
-    <ul class="member-list">
-        <li><a class="member-link" href="members/davidjhong.html">David Hong</a></li>
+    <div class="page-container">
         
-        <li><a class="member-link" href="#">(Future Member)</a></li>
-    </ul>
+        <aside class="sidebar">
+            <header class="course-header">
+                <h1>CSE 135</h1>
+                <p class="term">Winter 2026</p>
+            </header>
 
-    <footer>
-        <p>Live @ <span id="timestamp"></span></p>
-    </footer>
+            <nav class="course-nav">
+                <div class="nav-section">
+                    <h2 class="nav-title">Homework 1</h2>
+                    <ul class="nav-links">
+                        <li><a href="#">PHP</a></li>
+                        <li><a href="#">Node</a></li>
+                        <li><a href="#">Analytics</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h2 class="nav-title">Homework 2</h2>
+                    <p class="nav-status">TBD</p>
+                </div>
+
+                <div class="nav-section">
+                    <h2 class="nav-title">Analytics App</h2>
+                    <p class="nav-status">Incoming</p>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <section class="team-intro">
+                <h1>Team X</h1>
+                <p class="team-description">
+                    We are building cool stuff for CSE 135. This is our landing page for team assignments and personal portfolios.
+                </p>
+            </section>
+
+            <section class="team-members">
+                <h2>Team Members</h2>
+                <div class="cards-container">
+                    
+                    <article class="member-card">
+                        <div class="card-content">
+                            <h3>David Hong</h3>
+                            <p class="role">Developer</p>
+                            <a href="members/davidjhong.html" class="profile-btn">View Profile</a>
+                        </div>
+                    </article>
+
+                    <article class="member-card placeholder">
+                        <div class="card-content">
+                            <h3>Future Member</h3>
+                            <p class="role">Designer</p>
+                            <span class="profile-btn disabled">Coming Soon</span>
+                        </div>
+                    </article>
+
+                </div>
+            </section>
+
+            <footer>
+                <p>Live @ <span id="timestamp">Loading...</span></p>
+            </footer>
+        </main>
+
+    </div>
 
     <script>
-        document.getElementById('timestamp').innerText = new Date().toLocaleString();
+        document.addEventListener('DOMContentLoaded', () => {
+            const timeSpan = document.getElementById('timestamp');
+            if(timeSpan) {
+                timeSpan.innerText = new Date().toLocaleString();
+            }
+        });
     </script>
 </body>
 </html>
