@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>David Hong - CSE 135</title>
+    <link rel="icon" type="image/x-icon" href="../favicon.ico">
+    
+    <style>
+        body { 
+            font-family: 'Courier New', Courier, monospace; 
+            background-color: #222; 
+            color: #0f0; 
+            text-align: center; 
+            padding: 50px;
+        }
+        .profile-pic {
+            width: 150px;
+            height: 150px;
+            background-color: #444; /* Replace with an <img> tag later if you want */
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            line-height: 150px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #0f0;
+            color: #000;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="profile-pic">DH</div>
+    <h1>Hi, I'm David!</h1>
+    <p>I am a CS Major interested in web deployment and backend systems.</p>
+    
+    <h3>Fun Fact Generator</h3>
+    <p id="fun-fact">Click the button to know a secret...</p>
+    <button onclick="revealFact()">Click Me</button>
+
+    <br><br>
+    <a href="../index.html" style="color: white;">&larr; Back to Team Page</a>
+
+    <script>
+        function revealFact() {
+            const facts = [
+                "I deployed this site using Git Hooks!",
+                "I prefer tabs over spaces.",
+                "I once coded for 12 hours straight."
+            ];
+            const random = Math.floor(Math.random() * facts.length);
+            document.getElementById('fun-fact').innerText = facts[random];
+            document.getElementById('fun-fact').style.color = "yellow";
+        }
+    </script>
+</body>
+</html>

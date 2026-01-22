@@ -1,18 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CSE 135 HW Lives! (Through Git!)</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSE 135 - Team Awesome</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 40px auto; text-align: center; }
+        h1 { color: #333; }
+        .member-list { list-style: none; padding: 0; }
+        .member-link { 
+            display: inline-block; 
+            margin: 10px; 
+            padding: 10px 20px; 
+            background: #007bff; 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 5px; 
+        }
+        .member-link:hover { background: #0056b3; }
+    </style>
 </head>
-
 <body>
-  <h1>CSE 135 HW1 Lives!</h1>
-  <script>
-    document.write(`Live @ ${new Date()}`);
-  </script>
+    <h1>Welcome to Team Awesome</h1>
+    <p>We are building cool stuff for CSE 135.</p>
 
+    <h2>Team Members</h2>
+    <ul class="member-list">
+        <li><a class="member-link" href="members/davidjhong.html">David Hong</a></li>
+        
+        <li><a class="member-link" href="#">(Future Member)</a></li>
+    </ul>
+
+    <footer>
+        <p>Live @ <span id="timestamp"></span></p>
+    </footer>
+
+    <script>
+        document.getElementById('timestamp').innerText = new Date().toLocaleString();
+    </script>
 </body>
-
 </html>
