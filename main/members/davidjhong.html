@@ -4,57 +4,130 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>David Hong - CSE 135</title>
-    <link rel="icon" type="image/x-icon" href="../favicon.ico">
-    
-    <style>
-        body { 
-            font-family: 'Courier New', Courier, monospace; 
-            background-color: #222; 
-            color: #0f0; 
-            text-align: center; 
-            padding: 50px;
-        }
-        .profile-pic {
-            width: 150px;
-            height: 150px;
-            background-color: #444; /* Replace with an <img> tag later if you want */
-            border-radius: 50%;
-            margin: 0 auto 20px;
-            line-height: 150px;
-        }
-        button {
-            padding: 10px 20px;
-            background: #0f0;
-            color: #000;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-        }
-    </style>
+    <link rel="stylesheet" href="davidjhong.css">
+    <script src="davidjhong.js" defer></script>
 </head>
 <body>
-    <div class="profile-pic">DH</div>
-    <h1>Hi, I'm David!</h1>
-    <p>I am a CS Major interested in web deployment and backend systems.</p>
-    
-    <h3>Fun Fact Generator</h3>
-    <p id="fun-fact">Click the button to know a secret...</p>
-    <button onclick="revealFact()">Click Me</button>
 
-    <br><br>
-    <a href="../index.html" style="color: white;">&larr; Back to Team Page</a>
+    <nav class="nav-container">
+        <a href="../index.html" class="back-link">&larr; Back to Team Page</a>
+    </nav>
 
-    <script>
-        function revealFact() {
-            const facts = [
-                "I deployed this site using Git Hooks!",
-                "I prefer tabs over spaces.",
-                "I once coded for 12 hours straight."
-            ];
-            const random = Math.floor(Math.random() * facts.length);
-            document.getElementById('fun-fact').innerText = facts[random];
-            document.getElementById('fun-fact').style.color = "yellow";
-        }
-    </script>
+    <main class="main-container">
+        <aside class="left-column">
+            
+            <div class="card profile-card">
+                <div class="profile-pic-placeholder">
+                    <span>DH</span>
+                </div>
+                <h1>Hi, I’m David!</h1>
+                <p class="bio-text">
+                    I am a CS Major interested in web deployment and backend systems.
+                </p>
+                <div class="tags-container">
+                    <span class="tag">Backend</span>
+                    <span class="tag">Web Deployment</span>
+                </div>
+            </div>
+
+            <div class="card fun-fact-card">
+                <h2>Fun Fact Generator</h2>
+                <div id="fact-display" class="fact-display">
+                    Click the button below to learn something new about me!
+                </div>
+                <button id="fact-btn" class="action-btn">Generate Fact</button>
+            </div>
+
+        </aside>
+
+        <section class="right-column">
+            
+            <div class="accordion-section">
+                <h2 class="section-title">Experience</h2>
+                
+                <div class="accordion-item">
+                    <button class="accordion-trigger" aria-expanded="false" aria-controls="exp-panel-1">
+                        <span class="accordion-title">
+                            Software Engineering Intern <span class="accordion-subtitle">— Company Placeholder</span>
+                        </span>
+                        <span class="accordion-date">2025 — Present</span>
+                        <span class="chevron" aria-hidden="true">▼</span>
+                    </button>
+                    <div id="exp-panel-1" class="accordion-panel" role="region">
+                        <div class="panel-content">
+                            <p>Assisted in developing scalable backend services using Node.js and AWS.</p>
+                            <ul>
+                                <li>Optimized database queries reducing load times by 20%.</li>
+                                <li>Collaborated with cross-functional teams to define API specifications.</li>
+                                <li>Implemented automated testing pipelines using Jest and CI/CD tools.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <button class="accordion-trigger" aria-expanded="false" aria-controls="exp-panel-2">
+                        <span class="accordion-title">
+                            HelpDesk <span class="accordion-subtitle">— Org Placeholder</span>
+                        </span>
+                        <span class="accordion-date">2024 — 2025</span>
+                        <span class="chevron" aria-hidden="true">▼</span>
+                    </button>
+                    <div id="exp-panel-2" class="accordion-panel" role="region">
+                        <div class="panel-content">
+                            <p>Managed identity access protocols and user provisioning for internal systems.</p>
+                            <ul>
+                                <li>Streamlined onboarding process for 500+ new employees.</li>
+                                <li>Audited security logs to ensure compliance with data policies.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-section">
+                <h2 class="section-title">Projects</h2>
+
+                <div class="accordion-item">
+                    <button class="accordion-trigger" aria-expanded="false" aria-controls="proj-panel-1">
+                        <span class="accordion-title">
+                            Full-Stack App <span class="accordion-subtitle">— Project Placeholder</span>
+                        </span>
+                        <span class="chevron" aria-hidden="true">▼</span>
+                    </button>
+                    <div id="proj-panel-1" class="accordion-panel" role="region">
+                        <div class="panel-content">
+                            <p>A comprehensive web application allowing users to track real-time data.</p>
+                            <ul>
+                                <li>Built frontend with vanilla JS and backend with Express.</li>
+                                <li>Integrated third-party APIs for live data fetching.</li>
+                                <li>Deployed on DigitalOcean with Nginx reverse proxy.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <button class="accordion-trigger" aria-expanded="false" aria-controls="proj-panel-2">
+                        <span class="accordion-title">
+                            Portfolio / Deployment <span class="accordion-subtitle">— Project Placeholder</span>
+                        </span>
+                        <span class="chevron" aria-hidden="true">▼</span>
+                    </button>
+                    <div id="proj-panel-2" class="accordion-panel" role="region">
+                        <div class="panel-content">
+                            <p>A custom-built personal site demonstrating DevOps skills.</p>
+                            <ul>
+                                <li>Implemented a CI/CD pipeline using Git hooks.</li>
+                                <li>Configured Linux server security and SSL certificates manually.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
 </body>
 </html>
