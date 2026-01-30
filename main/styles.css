@@ -7,168 +7,246 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #ffffff;
+    background-color: #f4f4f4b7;
     color: #333;
     line-height: 1.6;
 }
 
-/* LAYOUT CONTAINER  */
+/* --- LAYOUT CONTAINER --- */
 .page-container {
     display: flex;
-    flex-direction: row;
-    max-width: 1200px;
-    margin: 0 auto;
-    min-height: 100vh;
-    border-left: 1px solid #eee;
-    border-right: 1px solid #eee;
+    flex-direction: column;
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 0 20px;
+    gap: 16px;
 }
 
-/* SIDEBAR STYLING*/
-.sidebar {
-    width: 280px;
-    flex-shrink: 0;
-    padding: 2rem;
-    border-right: 1px solid #e0e0e0;
+/* --- CARD STYLING --- */
+.stack-card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+
+/* --- STATIC CARDS --- */
+.static-card .card-header {
+    padding: 1.2rem 1.5rem;
+    background: #fff;
+    border-bottom: 1px solid transparent;
+}
+
+.static-body {
+    padding: 0 1.5rem 1.5rem 1.5rem;
+}
+
+/* --- ACCORDION TOGGLE BUTTON --- */
+.accordion-toggle {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+    border: none;
+    padding: 1.2rem 1.5rem;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.2s;
+    font-family: inherit;
+}
+
+.accordion-toggle:hover {
+    background-color: #f9f9f9;
+}
+
+/* Header Typography */
+h1 {
+    font-size: 1.5rem;
+    margin: 0;
+    color: #222;
+}
+
+.term {
+    font-size: 0.9rem;
+    color: #666;
+    margin-left: 10px;
+}
+
+.card-title {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #444;
+}
+
+.header-content {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* Chevron Rotation */
+.chevron {
+    font-size: 0.8rem;
+    color: #888;
+    transition: transform 0.3s ease;
+}
+
+.accordion-toggle[aria-expanded="true"] .chevron {
+    transform: rotate(180deg);
+}
+
+/* --- ACCORDION PANEL --- */
+.accordion-panel {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.3s ease-out;
     background-color: #fff;
 }
 
-.course-header {
-    margin-bottom: 2rem;
+.accordion-toggle[aria-expanded="true"] + .accordion-panel {
+    grid-template-rows: 1fr;
+    border-top: 1px solid #f0f0f0;
 }
 
-.course-header h1 {
-    font-size: 2rem;
-    color: #222;
-    margin-bottom: 0.2rem;
+.panel-inner {
+    overflow: hidden;
+    padding: 0 1.5rem 1.5rem 1.5rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
-.course-header .term {
-    font-size: 1rem;
-    color: #666;
-    font-weight: 500;
+.accordion-toggle[aria-expanded="true"] + .accordion-panel .panel-inner {
+    opacity: 1;
+    padding-top: 1rem;
 }
 
-/* Sidebar Navigation Items */
-.nav-section {
-    margin-bottom: 1.5rem;
-}
-
-.nav-title {
-    background-color: #f0f0f0;
-    padding: 0.4rem 0.8rem;
-    font-size: 1.1rem;
-    color: #444;
-    border-radius: 4px;
-    margin-bottom: 0.5rem;
-}
-
+/* --- LIST STYLING (Multi-Column Logic) --- */
 .nav-links {
-    list-style: none;
-    padding-left: 0.8rem;
+    padding-left: 1.5rem; /* Indent for bullets */
+    margin: 0;
 }
 
 .nav-links li {
-    margin-bottom: 0.3rem;
+    margin-bottom: 0.5rem;
+}
+
+/* DESKTOP: Max 5 items per column, then flow right.
+   We use CSS Grid with auto-flow column.
+*/
+.multi-column-list {
+    display: grid;
+    /* Limit to exactly 5 rows. min-content makes rows fit text height */
+    grid-template-rows: repeat(5, min-content);
+    grid-auto-flow: column; 
+    gap: 0 40px; /* 40px gap between columns */
+    list-style: disc; /* Ensure bullets are visible */
 }
 
 .nav-links a {
     text-decoration: none;
     color: #007bff;
     font-weight: 500;
-    transition: color 0.2s;
 }
 
 .nav-links a:hover {
-    color: #0056b3;
     text-decoration: underline;
 }
 
 .nav-status {
-    padding-left: 0.8rem;
     color: #888;
     font-style: italic;
-    font-size: 0.95rem;
 }
 
-/* MAIN CONTENT */
-.main-content {
-    flex: 1;
-    padding: 3rem 4rem;
-    display: flex;
-    flex-direction: column;
+/* --- NESTED METADATA --- */
+.nested-li {
+    list-style: none; /* Remove bullet for the expander container */
+    margin-left: -1rem; /* Pull back to align with text */
 }
 
-.team-intro {
-    margin-bottom: 3rem;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 2rem;
+.nested-accordion {
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 0.5rem;
+    background-color: #fafafa;
 }
 
-.team-intro h1 {
-    font-size: 2.5rem;
-    margin-bottom: 0.5rem;
-    color: #111;
+.nested-accordion summary {
+    cursor: pointer;
+    font-weight: bold;
+    color: #444;
+    padding: 0.2rem;
 }
 
-.team-intro .team-description {
-    font-size: 1.2rem;
+.nested-links {
+    margin-top: 0.5rem;
+    padding-left: 1.5rem;
+    border-top: 1px solid #eee;
+    padding-top: 0.5rem;
+    list-style: circle; /* Different bullet for nested items */
+}
+
+/* --- CONTENT STYLING --- */
+.team-description {
+    font-size: 1.1rem;
     color: #555;
+    margin-bottom: 2rem;
 }
 
-/* --- MEMBER CARDS --- */
 .team-members h2 {
-    margin-bottom: 1.5rem;
-    font-size: 1.8rem;
+    font-size: 1.4rem;
+    margin-bottom: 1rem;
     color: #333;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 0.5rem;
 }
 
 .cards-container {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 20px;
-    flex-wrap: wrap;
 }
 
 .member-card {
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 8px;
+    background: #fdfdfd;
+    border: 1px solid #eee;
+    border-radius: 6px;
     padding: 1.5rem;
-    width: 250px;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .member-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 15px rgba(0,0,0,0.1);
-    border-color: #bbb;
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
 }
 
 .member-card h3 {
-    margin-bottom: 0.5rem;
-    font-size: 1.4rem;
-    color: #222;
+    margin: 0 0 0.5rem 0;
+    font-size: 1.2rem;
 }
 
 .member-card .role {
     color: #666;
-    margin-bottom: 1.5rem;
-    font-weight: 500;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
 }
 
 .profile-btn {
     display: inline-block;
     text-align: center;
-    padding: 0.6rem 1rem;
+    padding: 0.5rem 1rem;
     background-color: #007bff;
     color: #fff;
     text-decoration: none;
     border-radius: 4px;
-    font-weight: 600;
+    font-weight: 500;
     font-size: 0.9rem;
-    transition: background-color 0.2s;
+    transition: background 0.2s;
 }
 
 .profile-btn:hover {
@@ -176,44 +254,49 @@ body {
 }
 
 .profile-btn.disabled {
-    background-color: #e0e0e0;
-    color: #999;
-    cursor: default;
+    background-color: #eee;
+    color: #aaa;
     pointer-events: none;
 }
 
-/* FOOTER */
 footer {
-    margin-top: auto;
-    padding-top: 3rem;
-    font-size: 0.9rem;
+    text-align: center;
+    padding: 2rem 0;
     color: #999;
-    border-top: 1px solid #eee;
+    font-size: 0.9rem;
 }
 
-/* RESPONSIVE DESIGN (Mobile) */
+/* --- MOBILE LAYOUT ADJUSTMENTS (<= 768px) --- */
 @media (max-width: 768px) {
-    .page-container {
-        flex-direction: column;
-        border: none;
-    }
-
-    .sidebar {
-        width: 100%;
-        border-right: none;
-        border-bottom: 1px solid #e0e0e0;
-        padding: 1.5rem;
-    }
-
-    .main-content {
-        padding: 2rem 1.5rem;
-    }
-
-    .cards-container {
-        justify-content: center;
-    }
     
-    .member-card {
-        width: 100%;
+    .page-container {
+        margin: 0;
+        padding: 0;
+        max-width: 100%;
+        gap: 0;
+    }
+
+    .stack-card {
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        border-top: none;
+        box-shadow: none;
+        border-bottom: 1px solid #eee;
+    }
+
+    .accordion-toggle, .static-card .card-header {
+        padding: 1rem;
+    }
+
+    .header-content {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .multi-column-list {
+        display: block; /* Standard vertical list */
+        grid-template-rows: none;
+        grid-auto-flow: row;
     }
 }

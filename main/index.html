@@ -6,10 +6,8 @@
     <title>CSE 135 - Team Ibius Home</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <!-- Matomo -->
     <script>
     var _paq = window._paq = window._paq || [];
-    /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
     _paq.push(['trackPageView']);
     _paq.push(['enableLinkTracking']);
     (function() {
@@ -20,90 +18,122 @@
         g.async=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
     })();
     </script>
-    <!-- End Matomo Code -->
-
-</head>
+    </head>
 <body>
 
     <div class="page-container">
         
-        <aside class="sidebar">
-            <header class="course-header">
-                <h1>CSE 135</h1>
-                <p class="term">Winter 2026</p>
-            </header>
-
-            <nav class="course-nav">
-                <div class="nav-section">
-                    <h2 class="nav-title">Homework 1</h2>
-                    <ul class="nav-links">
-                        <li><a href="hello.php">PHP</a></li>
-                        <li><a href="report.html" target="_blank">Report</a></li>
-                        <li><a href="/analytics/" target="_blank">Analytics</a></li>
-                    </ul>
-                    <h2 class="nav-title">Site Metadata</h2>
-                    <ul class="nav-links">
-                        <li><a href="robots.txt" target="_blank">View robots.txt</a></li>
-                        <li><a href="favicon.ico" target="_blank">View Favicon</a></li>
-                    </ul>
+        <section class="stack-card course-card static-card">
+            <div class="card-header">
+                <div class="header-content">
+                    <h1>CSE 135</h1>
+                    <span class="term">Winter 2026</span>
                 </div>
+            </div>
+        </section>
 
-                <div class="nav-section">
-                    <h2 class="nav-title">Homework 2</h2>
-                    <p class="nav-status">TBD</p>
+        <section class="stack-card team-card static-card">
+            <div class="card-header">
+                <div class="header-content">
+                    <h1>Team Ibius</h1>
                 </div>
-
-                <div class="nav-section">
-                    <h2 class="nav-title">Analytics App</h2>
-                    <p class="nav-status">Incoming</p>
-                </div>
-            </nav>
-        </aside>
-
-        <main class="main-content">
-            <section class="team-intro">
-                <h1>Team Ibius</h1>
+            </div>
+            <div class="static-body">
                 <p class="team-description">
                     We are building cool stuff for CSE 135. This is our landing page for team assignments and personal portfolios.
                 </p>
-            </section>
+                
+                <div class="team-members">
+                    <h2>Team Members</h2>
+                    <div class="cards-container">
+                        
+                        <article class="member-card">
+                            <div class="card-content">
+                                <h3>David Hong</h3>
+                                <p class="role">Developer</p>
+                                <a href="members/davidjhong.html" class="profile-btn">View Profile</a>
+                            </div>
+                        </article>
 
-            <section class="team-members">
-                <h2>Team Members</h2>
-                <div class="cards-container">
-                    
-                    <article class="member-card">
-                        <div class="card-content">
-                            <h3>David Hong</h3>
-                            <p class="role">Developer</p>
-                            <a href="members/davidjhong.html" class="profile-btn">View Profile</a>
-                        </div>
-                    </article>
+                        <article class="member-card placeholder">
+                            <div class="card-content">
+                                <h3>Bob the Builder</h3>
+                                <p class="role">Designer</p>
+                                <span class="profile-btn disabled">Coming Soon</span>
+                            </div>
+                        </article>
 
-                    <article class="member-card placeholder">
-                        <div class="card-content">
-                            <h3>Bob the Builder</h3>
-                            <p class="role">Designer</p>
-                            <span class="profile-btn disabled">Coming Soon</span>
-                        </div>
-                    </article>
-
+                    </div>
                 </div>
-            </section>
+            </div>
+        </section>
 
-            <footer>
-                <p>Live @ <span id="timestamp">Loading...</span></p>
-            </footer>
-        </main>
+        <section class="stack-card">
+            <button class="accordion-toggle" aria-expanded="false" aria-controls="panel-hw1">
+                <span class="card-title">Homework 1</span>
+                <span class="chevron" aria-hidden="true">▼</span>
+            </button>
+            <div id="panel-hw1" class="accordion-panel">
+                <div class="panel-inner">
+                    <ul class="nav-links multi-column-list">
+                        <li><a href="hello.php">PHP</a></li>
+                        <li><a href="report.html" target="_blank">Report</a></li>
+                        <li><a href="/analytics/" target="_blank">Analytics</a></li>
+                        <li><a href="robots.txt" target="_blank">View robots.txt</a></li>
+                        <li><a href="favicon.ico" target="_blank">View Favicon</a></li>
+                        <li><a href="#" target="_blank">Test</a></li>
+                        
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="stack-card">
+            <button class="accordion-toggle" aria-expanded="false" aria-controls="panel-hw2">
+                <span class="card-title">Homework 2</span>
+                <span class="chevron" aria-hidden="true">▼</span>
+            </button>
+            <div id="panel-hw2" class="accordion-panel">
+                <div class="panel-inner">
+                    <p class="nav-status">TBD</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="stack-card">
+            <button class="accordion-toggle" aria-expanded="false" aria-controls="panel-app">
+                <span class="card-title">Analytics App</span>
+                <span class="chevron" aria-hidden="true">▼</span>
+            </button>
+            <div id="panel-app" class="accordion-panel">
+                <div class="panel-inner">
+                    <p class="nav-status">Incoming</p>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <p>Live @ <span id="timestamp">Loading...</span></p>
+        </footer>
 
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            
             const timeSpan = document.getElementById('timestamp');
             if(timeSpan) {
                 timeSpan.innerText = new Date().toLocaleString();
             }
+
+            const toggles = document.querySelectorAll('.accordion-toggle');
+            
+            toggles.forEach(toggle => {
+                toggle.addEventListener('click', () => {
+                    const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+                    toggle.setAttribute('aria-expanded', !isExpanded);
+                });
+            });
         });
     </script>
 </body>
