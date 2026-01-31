@@ -19,7 +19,7 @@ print "<title>Perl Session Destroyed</title>";
 print "</head>";
 print "<body>";
 print "<h1>Session Destroyed</h1>";
-print "<a href=\"/perl-cgiform.html\">Back to the Perl CGI Form</a><br />";
+print "<a href='../../index.html'>Back to Home</a><br />";
 print "<a href=\"state-perl.pl\">Back to Page 1</a><br />";
 print "<a href=\"state-perl-2.pl\">Back to Page 2</a>";
 print "</body>";

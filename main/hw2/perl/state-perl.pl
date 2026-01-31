@@ -43,5 +43,12 @@ print "<form action=\"state-destroy.pl\" method=\"get\">";
 print "<button type=\"submit\">Destroy Session</button>";
 print "</form>";
 
+# --- NAVIGATION BLOCK ---
+print "<hr>";
+print "<div style='margin-top:20px;'>";
+print "<a href='../../index.html'>🏠 Back to Home</a>";
+print "</div>";
+# ------------------------
+
 print "</body>";
 print "</html>";
