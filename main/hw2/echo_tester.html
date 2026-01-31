@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Echo Form Tester</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            max-width: 600px; 
+            margin: 40px auto; 
+            padding: 20px; 
+            background: #f4f4f4; 
+            color: #333;
+        }
+        h1 { text-align: center; color: #222; }
+        .form-container { 
+            background: #fff; 
+            padding: 30px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+        }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; color: #555; }
+        select, input[type="text"] { 
+            width: 100%; 
+            padding: 10px; 
+            border: 1px solid #ccc; 
+            border-radius: 4px; 
+            box-sizing: border-box; 
+        }
+        button { 
+            width: 100%; 
+            padding: 12px; 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            font-size: 1rem; 
+            font-weight: bold; 
+            cursor: pointer; 
+            transition: background 0.2s; 
+        }
+        button:hover { background: #0056b3; }
+        
+        .notice {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 15px;
+            text-align: center;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Echo Form Tester</h1>
+    
+    <div class="form-container">
+        <form id="echoForm" action="perl/echo-perl.pl" method="POST">
+            
+            <div class="form-group">
+                <label for="endpoint">Endpoint (Language):</label>
+                <select id="endpoint" name="endpoint_selector">
+                    <option value="perl/echo-perl.pl">Perl</option>
+                    <option value="python/echo.py">Python</option>
+                    <option value="go/echo.cgi">Go</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="method">HTTP Method:</label>
+                <select id="method" name="method_selector">
+                    <option value="GET">GET</option>
+                    <option value="POST" selected>POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="DELETE">DELETE</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="encoding">Encoding:</label>
+                <select id="encoding" name="encoding_selector">
+                    <option value="application/x-www-form-urlencoded">Form URL Encoded</option>
+                    <option value="application/json">JSON</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="message">Message:</label>
+                <input type="text" id="message" name="message" value="Hello Team Ibius">
+            </div>
+            
+            <div class="form-group">
+                <label for="team">Extra Data:</label>
+                <input type="text" id="extra" name="extra" value="Testing 123">
+            </div>
+
+            <button type="submit">Send Request</button>
+        </form>
+
+        <div class="notice">
+            <span id="js-status" style="display:none; color: green;">
+                ✅ JavaScript Active: Full REST/JSON support enabled.
+            </span>
+            <noscript>
+                ⚠️ JavaScript Off: Reduced mode (Standard POST only).
+            </noscript>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('js-status').style.display = 'inline';
+
+        document.getElementById('echoForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const endpoint = document.getElementById('endpoint').value;
+            const method = document.getElementById('method').value;
+            const encoding = document.getElementById('encoding').value;
+            const messageVal = document.getElementById('message').value;
+            const extraVal = document.getElementById('extra').value;
+
+            let body = null;
+            let headers = {};
+
+            // Prepare Body for Non-GET requests
+            if (method !== 'GET') {
+                if (encoding === 'application/json') {
+                    headers['Content-Type'] = 'application/json';
+                    body = JSON.stringify({ message: messageVal, extra: extraVal });
+                } else {
+                    headers['Content-Type'] = 'application/x-www-form-urlencoded';
+                    const params = new URLSearchParams();
+                    params.append('message', messageVal);
+                    params.append('extra', extraVal);
+                    body = params.toString();
+                }
+            }
+
+            // Prepare URL (Handle Query String for GET)
+            let fetchUrl = endpoint;
+            if (method === 'GET') {
+                const params = new URLSearchParams();
+                params.append('message', messageVal);
+                params.append('extra', extraVal);
+                fetchUrl += '?' + params.toString();
+            }
+
+            // Fire Request
+            fetch(fetchUrl, {
+                method: method,
+                headers: headers,
+                body: body
+            })
+            .then(response => response.text())
+            .then(html => {
+                document.open();
+                document.write(html);
+                document.close();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Request failed. See console.');
+            });
+        });
+    </script>
+</body>
+</html>
