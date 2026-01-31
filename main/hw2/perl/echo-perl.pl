@@ -39,8 +39,8 @@ print "</div>";
 
 print "<hr>";
 print "<div style='text-align:center; margin-top:20px;'>";
-print "<a href='../../index.html' style='text-decoration:none; background:#444; color:white; padding:10px 15px; border-radius:5px; margin-right:10px;'>Home</a>";
-print "<a href='/echo_tester.html' style='text-decoration:none; background:#007bff; color:white; padding:10px 15px; border-radius:5px;'>Back to Tester</a>";
+print "<a href='/index.html' style='text-decoration:none; background:#444; color:white; padding:10px 15px; border-radius:5px; margin-right:10px;'>Home</a>";print "<a href='/echo_tester.html' style='text-decoration:none; background:#007bff; color:white; padding:10px 15px; border-radius:5px;'>Back to Tester</a>";
+print "<a href='/hw2/echo_tester.html' style='text-decoration:none; background:#007bff; color:white; padding:10px 15px; border-radius:5px;'>Back to Tester</a>";
 print "</div>";
 
 print "</body></html>";
