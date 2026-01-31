@@ -46,7 +46,7 @@ print "</form>";
 # --- NAVIGATION BLOCK ---
 print "<hr>";
 print "<div style='margin-top:20px;'>";
-print "<a href='../../index.html'>🏠 Back to Home</a>";
+print "<a href='../../index.html'>Back to Home</a>";
 print "</div>";
 # ------------------------
 

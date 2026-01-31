@@ -25,8 +25,7 @@ print "<p>Your current IP Address is: $address</p>";
 # --- NAVIGATION BLOCK ---
 print "<hr>";
 print "<div style='margin-top:20px; text-align:center;'>";
-print "<a href='../../index.html' style='margin-right:20px;'>🏠 Home</a>";
-print "<a href='../echo_tester.html'>📝 Echo Tester</a>";
+print "<a href='../../index.html' style='margin-right:20px;'>Home</a>";
 print "</div>";
 # ------------------------
 
