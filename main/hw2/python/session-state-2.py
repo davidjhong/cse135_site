@@ -30,6 +30,8 @@ else:
     print("<p><b>Name:</b> You do not have a name set (or session expired).</p>")
 
 print("<br/><a href='session-state.py'>Back to Page 1</a><br/>")
+print("<br/><a href='/index.html'>Home</a><br/>")
+print("<form action='session-destroy.py' method='get'>")
 print("<button type='submit'>Destroy Session</button>")
-print("<a href='/index.html'>Home</a>")
+print("</form>")
 print("</body></html>")
