@@ -35,7 +35,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "<html><head><title>Session Destroyed</title></head><body>")
 	fmt.Fprintln(w, "<h1>Session Destroyed</h1>")
 	fmt.Fprintln(w, "<p>Your session file has been deleted and cookie expired.</p>")
-	fmt.Fprintln(w, "<a href='session.cgi'>Start New Session</a>")
+	fmt.Fprintln(w, "<a href='session-state.cgi'>Start New Session</a>")
 	fmt.Fprintln(w, "<br><a href='/index.html'>Home</a></body></html>")
 }
 

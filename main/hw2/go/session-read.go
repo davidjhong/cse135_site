@@ -43,7 +43,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "<p><b>Name:</b> You do not have a name set (or session expired).</p>")
 	}
 
-	fmt.Fprintln(w, "<br/><a href='session.cgi'>Back to Page 1</a><br/>")
+	fmt.Fprintln(w, "<br/><a href='session-state.cgi'>Back to Page 1</a><br/>")
 	fmt.Fprintln(w, "<a href='/index.html'>Home</a></body></html>")
 	fmt.Fprintln(w, "<form action='session-destroy.cgi' method='get'><button>Destroy Session</button></form>")
 }
