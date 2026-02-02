@@ -34,7 +34,6 @@ if ($name){
 }
 print "<br/><br/>";
 print "<a href=\"state-perl.pl\">Session Page 1</a><br/>";
-print "<a href=\"/perl-cgiform.html\">Perl CGI Form</a><br />";
 print "<form style=\"margin-top:30px\" action=\"state-destroy.pl\" method=\"get\">";
 print "<button type=\"submit\">Destroy Session</button>";
 print "</form>";
