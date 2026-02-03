@@ -269,7 +269,8 @@ h1 {
 
 /* Individual language columns */
 .lang-col {
-    flex: 1; /* Each column takes equal width */
+    flex: 0 0 calc((100% - 40px) / 3); /* Each column takes equal width */
+    box-sizing: border-box;
     min-width: 150px; /* Prevent them from getting too squished */
     background: #fafafa;
     padding: 15px;
