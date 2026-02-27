@@ -139,8 +139,8 @@
             payload.static = getStaticData();
             payload.performance = getPerformanceData();
         } else if (payloadType === 'activity_update' || payloadType === 'page_exit') {
-        if (activityQueue.length === 0 && payloadType !== 'page_exit') return; // Don't send empty batches
-            payload.activities = activityQueue.splice(0, activityQueue.length); // Grab all events and empty the queue
+        if (activityQueue.length === 0 && payloadType !== 'page_exit') return;
+            payload.activities = activityQueue.splice(0, activityQueue.length);
         }
 
         fetch(ENDPOINT, {
