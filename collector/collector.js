@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const ENDPOINT = 'https://collector.davidjhong.site/api/collect';
+    const ENDPOINT = 'https://collector.davidjhong.site/api/collect.php';
 
     function getSessionID() {
         let match = document.cookie.match(new RegExp('(^| )_collector_sid=([^;]+)'));
