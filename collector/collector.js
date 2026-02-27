@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const ENDPOINT = 'https://collector.davidjhong.site/api/collect.php';
+        const ENDPOINT = 'https://collector.davidjhong.site/api/collect.php';
 
     function getSessionID() {
         let match = document.cookie.match(new RegExp('(^| )_collector_sid=([^;]+)'));
@@ -143,12 +143,14 @@
             payload.activities = activityQueue.splice(0, activityQueue.length); // Grab all events and empty the queue
         }
 
-        const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-        if (navigator.sendBeacon) {
-            navigator.sendBeacon(ENDPOINT, blob);
-        } else {
-            fetch(ENDPOINT, { method: 'POST', body: blob, keepalive: true }).catch(()=>{});
-        }
+        fetch(ENDPOINT, {
+        method: 'POST', 
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload),
+        keepalive: true
+        }).catch((err) => console.error("Analytics Delivery Error:", err));
     }
 
     // load
