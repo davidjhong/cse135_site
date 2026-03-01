@@ -32,7 +32,7 @@
             windowWidth: window.innerWidth,
             windowHeight: window.innerHeight,
 
-            networkType: (connection in navigator) ? navigator.connection.effectiveType : 'unknown',    
+            networkType: ('connection' in navigator) ? navigator.connection.effectiveType : 'unknown',    
         };
 
         let testDiv = document.createElement('div');
@@ -83,7 +83,7 @@
         }
 
         clearTimeout(idleTimeOut);
-        idleTimeout = setTimeout(() => {
+        idleTimeOut = setTimeout(() => {
             isIdle = true;
         }, 2000); // 2 seconds of inactivity triggers idle state
 
