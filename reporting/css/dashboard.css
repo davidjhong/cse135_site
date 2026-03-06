@@ -1,0 +1,37 @@
+body { 
+    font-family: sans-serif;
+    padding: 2rem;
+    background: #f4f4f9;
+    margin: 0;
+}
+.nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+h2 { 
+    margin: 0;
+}
+
+a.logout {
+    color: #dc3545;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+a.logout:hover {
+    text-decoration: underline;
+}
+
+#data-container {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
