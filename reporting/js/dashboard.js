@@ -1,10 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const dataContainer = document.getElementById('data-container');
-    dataContainer.innerHTML = '<h3>Loading recent events...</h3>';
-
+    const tbody = document.getElementById('events-tbody');
+    const controls = document.getElementById('table-controls');
+    
     let allEvents = [];
-    let currentlyDisplayed = 0;
     const INITIAL_LIMIT = 25;
+    let isExpanded = false;
 
     fetch('/api/events')
         .then(response => {
@@ -14,48 +14,26 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(data => {
             allEvents = data;
             if (allEvents.length === 0) {
-                dataContainer.innerHTML = '<p>No events found in the database.</p>';
+                tbody.innerHTML = '<tr><td colspan="5">No events found in the database.</td></tr>';
                 return;
             }
-
-            // Scaffold the table and a container for the Load More button
-            dataContainer.innerHTML = `
-                <h3>Recent Analytics Data</h3>
-                <table class="data-table" id="events-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Session ID</th>
-                            <th>Event Type</th>
-                            <th>Created At</th>
-                            <th>Raw Payload</th>
-                        </tr>
-                    </thead>
-                    <tbody id="events-tbody"></tbody>
-                </table>
-                <div id="button-container" style="text-align: center; margin-top: 20px;"></div>
-            `;
-
-            renderRows(INITIAL_LIMIT);
+            renderTable();
         })
         .catch(error => {
             console.error('Error fetching data:', error);
-            dataContainer.innerHTML = `<p class="error">Failed to load data: ${error.message}</p>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="error">Failed to load data: ${error.message}</td></tr>`;
         });
 
-    // Function to inject a specific number of rows into the DOM
-    function renderRows(limit) {
-        const tbody = document.getElementById('events-tbody');
-        const buttonContainer = document.getElementById('button-container');
+    function renderTable() {
+        tbody.innerHTML = ''; // Clear existing rows
         
-        const endIdx = Math.min(currentlyDisplayed + limit, allEvents.length);
-        let html = '';
+        // Determine how many rows to show based on the toggle state
+        const limit = isExpanded ? allEvents.length : Math.min(INITIAL_LIMIT, allEvents.length);
 
-        for (let i = currentlyDisplayed; i < endIdx; i++) {
+        let html = '';
+        for (let i = 0; i < limit; i++) {
             const event = allEvents[i];
-            
-            // Safely format the raw JSON so it doesn't break the HTML attributes
-            const rawDataStr = event.raw_data ? JSON.stringify(event.raw_data).replace(/"/g, '&quot;') : 'No extra data';
+            const rawDataStr = event.raw_data ? JSON.stringify(event.raw_data).replace(/'/g, "\\'").replace(/"/g, '&quot;') : 'No extra data';
 
             html += `
                 <tr>
@@ -69,24 +47,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 </tr>
             `;
         }
+        
+        tbody.innerHTML = html;
 
-        tbody.innerHTML += html;
-        currentlyDisplayed = endIdx;
+        // Render the toggle button if we have more than 25 total events
+        if (allEvents.length > INITIAL_LIMIT) {
+            if (isExpanded) {
+                controls.innerHTML = `<button id="toggle-btn" style="padding: 10px 20px; cursor: pointer; background: #6c757d; color: white; border: none; border-radius: 4px;">Collapse to ${INITIAL_LIMIT}</button>`;
+            } else {
+                const hiddenCount = allEvents.length - INITIAL_LIMIT;
+                controls.innerHTML = `<button id="toggle-btn" style="padding: 10px 20px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px;">View All Remaining (${hiddenCount})</button>`;
+            }
 
-        // If there is still data hidden, show the "View All" button
-        if (currentlyDisplayed < allEvents.length) {
-            const remainingCount = allEvents.length - currentlyDisplayed;
-            buttonContainer.innerHTML = `
-                <button id="load-more-btn" style="padding: 10px 20px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px;">
-                    View All Remaining (${remainingCount})
-                </button>
-            `;
-            
-            document.getElementById('load-more-btn').addEventListener('click', () => {
-                renderRows(allEvents.length - currentlyDisplayed);
+            // Attach the event listener to flip the state and re-render
+            document.getElementById('toggle-btn').addEventListener('click', () => {
+                isExpanded = !isExpanded;
+                renderTable();
             });
-        } else {
-            buttonContainer.innerHTML = ''; 
         }
     }
 });
