@@ -35,3 +35,14 @@ a.logout:hover {
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
+
+.data-table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.9rem; }
+.data-table th, .data-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
+.data-table th { background-color: #f8f9fa; font-weight: bold; color: #333; }
+.data-table tbody tr:hover { background-color: #f1f5f9; }
+.truncate { max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+
+.badge { padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; color: white; }
+.badge.page_load { background-color: #28a745; }
+.badge.activity_update { background-color: #007bff; }
+.badge.page_exit { background-color: #6c757d; }

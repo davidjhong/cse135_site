@@ -24,11 +24,11 @@ $id = (isset($request_uri[2]) && is_numeric($request_uri[2])) ? intval($request_
 switch ($method) {
     case 'GET':
         if ($id) {
-            $stmt = $pdo->prepare("SELECT id, session_id, event_type, created_at FROM events WHERE id = ?");
+            $stmt = $pdo->prepare("SELECT id, session_id, event_type, created_at, raw_data FROM events WHERE id = ?");
             $stmt->execute([$id]);
             echo json_encode($stmt->fetch(PDO::FETCH_ASSOC));
         } else {
-            $stmt = $pdo->query("SELECT id, session_id, event_type, created_at FROM events ORDER BY created_at DESC LIMIT 10");
+            $stmt = $pdo->query("SELECT id, session_id, event_type, created_at, raw_data FROM events ORDER BY created_at DESC LIMIT 100");
             echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
         }
         break;
