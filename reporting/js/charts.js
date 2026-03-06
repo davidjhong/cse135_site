@@ -16,14 +16,26 @@ document.addEventListener('analyticsDataLoaded', (e) => {
 
 function drawPerformanceChart(events) {
     // 1. Filter and format data
+    const dateFormatter = d3.timeFormat("%m/%d %H:%M:%S");
+    const thresholdMs = 1000;
+
     const loadEvents = events
-        .filter(d => d.event_type === 'page_load' && d.raw_data?.performance?.totalLoadTime)
+        .filter(d => d.event_type === 'page_load' && d.raw_data?.performance?.totalLoadTime !== undefined)
         .map(d => ({
             id: d.id,
-            time: d.raw_data.performance.totalLoadTime
+            time: Number(d.raw_data.performance.totalLoadTime),
+            createdAt: d.created_at ? new Date(d.created_at) : null
+        }))
+        .filter(d => Number.isFinite(d.time))
+        .map(d => ({
+            ...d,
+            timeLabel: d.createdAt && !Number.isNaN(d.createdAt.getTime())
+                ? dateFormatter(d.createdAt)
+                : `Event ${d.id}`
         })).reverse(); // Reverse so oldest is on the left
 
     const chartContainer = d3.select("#performance-chart");
+    chartContainer.style("position", "relative");
     chartContainer.html("");
 
     if (loadEvents.length === 0) {
@@ -32,9 +44,20 @@ function drawPerformanceChart(events) {
     }
 
     // 2. Setup SVG dimensions
-    const width = 460, height = 300, margin = {top: 20, right: 20, bottom: 60, left: 65};
+    const width = 560, height = 320, margin = {top: 20, right: 20, bottom: 95, left: 85};
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
+
+    const tooltip = chartContainer.append("div")
+        .style("position", "absolute")
+        .style("pointer-events", "none")
+        .style("background", "rgba(0, 0, 0, 0.85)")
+        .style("color", "#fff")
+        .style("padding", "6px 8px")
+        .style("border-radius", "4px")
+        .style("font-size", "12px")
+        .style("line-height", "1.3")
+        .style("opacity", 0);
 
     const svg = chartContainer.append("svg")
         .attr("width", width)
@@ -44,7 +67,16 @@ function drawPerformanceChart(events) {
 
     // 3. Scales
     const x = d3.scaleBand().domain(loadEvents.map(d => d.id)).range([0, innerWidth]).padding(0.1);
-    const y = d3.scaleLinear().domain([0, d3.max(loadEvents, d => d.time) * 1.2]).range([innerHeight, 0]);
+    const y = d3.scaleLinear()
+        .domain([0, Math.max(d3.max(loadEvents, d => d.time) * 1.2, thresholdMs * 1.1)])
+        .range([innerHeight, 0]);
+
+    const timeLabelById = new Map(loadEvents.map(d => [d.id, d.timeLabel]));
+    const tickStep = Math.max(1, Math.ceil(loadEvents.length / 8));
+    const xTickValues = loadEvents
+        .map((d, index) => ({ id: d.id, index }))
+        .filter(d => d.index % tickStep === 0 || d.index === loadEvents.length - 1)
+        .map(d => d.id);
 
     // 4. Draw Bars
     svg.selectAll(".bar")
@@ -55,14 +87,37 @@ function drawPerformanceChart(events) {
         .attr("y", d => y(d.time))
         .attr("width", x.bandwidth())
         .attr("height", d => innerHeight - y(d.time))
-        .attr("fill", d => d.time > 1000 ? "#dc3545" : "#28a745") // Red if slow, Green if fast
-        .append("title")
-        .text(d => `Load Time: ${Math.round(d.time)} ms`);
+        .attr("fill", d => d.time > thresholdMs ? "#dc3545" : "#28a745") // Red if slow, Green if fast
+        .on("mouseenter", function (event, d) {
+            d3.select(this).attr("opacity", 0.8);
+            tooltip
+                .style("opacity", 1)
+                .html(`Time: ${Math.round(d.time)} ms<br>${d.timeLabel}`);
+        })
+        .on("mousemove", function (event) {
+            const [mouseX, mouseY] = d3.pointer(event, chartContainer.node());
+            tooltip
+                .style("left", `${mouseX + 12}px`)
+                .style("top", `${mouseY - 28}px`);
+        })
+        .on("mouseleave", function () {
+            d3.select(this).attr("opacity", 1);
+            tooltip.style("opacity", 0);
+        });
 
     // 5. Axes & Threshold Line
     svg.append("g")
         .attr("transform", `translate(0,${innerHeight})`)
-        .call(d3.axisBottom(x).tickValues([])); // Keep ticks hidden, use axis label for clarity
+        .call(
+            d3.axisBottom(x)
+                .tickValues(xTickValues)
+                .tickFormat(d => timeLabelById.get(d) || "")
+        )
+        .selectAll("text")
+        .style("text-anchor", "end")
+        .attr("dx", "-0.5em")
+        .attr("dy", "0.3em")
+        .attr("transform", "rotate(-35)");
 
     svg.append("g")
         .call(d3.axisLeft(y).ticks(5).tickFormat(d => `${d} ms`));
@@ -79,17 +134,28 @@ function drawPerformanceChart(events) {
     svg.append("text")
         .attr("transform", "rotate(-90)")
         .attr("x", -innerHeight / 2)
-        .attr("y", -45)
+        .attr("y", -65)
         .attr("text-anchor", "middle")
         .style("font-size", "12px")
         .style("fill", "#333")
         .text("Load Time (ms)");
     
-    // 1000ms SLA Line
+    // 1000ms SLA Line + Label
     svg.append("line")
         .attr("class", "threshold-line")
         .attr("x1", 0).attr("x2", innerWidth)
-        .attr("y1", y(1000)).attr("y2", y(1000));
+        .attr("y1", y(thresholdMs)).attr("y2", y(thresholdMs))
+        .attr("stroke", "#6c757d")
+        .attr("stroke-width", 1.5)
+        .attr("stroke-dasharray", "4,4");
+
+    svg.append("text")
+        .attr("x", innerWidth - 4)
+        .attr("y", y(thresholdMs) - 6)
+        .attr("text-anchor", "end")
+        .style("font-size", "11px")
+        .style("fill", "#6c757d")
+        .text(`SLA: ${thresholdMs} ms`);
 }
 
 function drawActivityChart(events) {
