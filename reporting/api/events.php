@@ -41,5 +41,8 @@ switch ($method) {
     case 'DELETE':
         echo json_encode(["message" => "DELETE request received to delete event ID: $id"]);
         break;
+    case 'PATCH':
+        echo json_encode(["message" => "PATCH request received to partially update event ID: $id"]);
+        break;
 }
 ?>
