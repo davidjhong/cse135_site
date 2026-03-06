@@ -46,3 +46,9 @@ a.logout:hover {
 .badge.page_load { background-color: #28a745; }
 .badge.activity_update { background-color: #007bff; }
 .badge.page_exit { background-color: #6c757d; }
+
+.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+.chart-card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.chart-card h3 { margin-top: 0; text-align: center; color: #333; font-size: 1.1rem; }
+svg { display: block; margin: 0 auto; }
+.threshold-line { stroke: red; stroke-width: 2; stroke-dasharray: 5,5; }

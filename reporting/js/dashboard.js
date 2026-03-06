@@ -13,6 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .then(data => {
             allEvents = data;
+
+            const dataEvent = new CustomEvent('analyticsDataLoaded', { detail: allEvents });
+            document.dispatchEvent(dataEvent);
+
             if (allEvents.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5">No events found in the database.</td></tr>';
                 return;
