@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const controls = document.getElementById('table-controls');
     
     let allEvents = [];
-    const INITIAL_LIMIT = 25;
+    const INITIAL_LIMIT = 10;
     let isExpanded = false;
 
     fetch('/api/events')
