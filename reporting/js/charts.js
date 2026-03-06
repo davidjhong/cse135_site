@@ -23,17 +23,20 @@ function drawPerformanceChart(events) {
             time: d.raw_data.performance.totalLoadTime
         })).reverse(); // Reverse so oldest is on the left
 
+    const chartContainer = d3.select("#performance-chart");
+    chartContainer.html("");
+
     if (loadEvents.length === 0) {
         document.getElementById('performance-chart').innerHTML = '<p>No performance data available.</p>';
         return;
     }
 
     // 2. Setup SVG dimensions
-    const width = 400, height = 250, margin = {top: 20, right: 20, bottom: 30, left: 40};
+    const width = 460, height = 300, margin = {top: 20, right: 20, bottom: 60, left: 65};
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
-    const svg = d3.select("#performance-chart").append("svg")
+    const svg = chartContainer.append("svg")
         .attr("width", width)
         .attr("height", height)
         .append("g")
@@ -52,11 +55,35 @@ function drawPerformanceChart(events) {
         .attr("y", d => y(d.time))
         .attr("width", x.bandwidth())
         .attr("height", d => innerHeight - y(d.time))
-        .attr("fill", d => d.time > 1000 ? "#dc3545" : "#28a745"); // Red if slow, Green if fast
+        .attr("fill", d => d.time > 1000 ? "#dc3545" : "#28a745") // Red if slow, Green if fast
+        .append("title")
+        .text(d => `Load Time: ${Math.round(d.time)} ms`);
 
     // 5. Axes & Threshold Line
-    svg.append("g").attr("transform", `translate(0,${innerHeight})`).call(d3.axisBottom(x).tickValues([])); // Hide X ticks for clean look
-    svg.append("g").call(d3.axisLeft(y).ticks(5));
+    svg.append("g")
+        .attr("transform", `translate(0,${innerHeight})`)
+        .call(d3.axisBottom(x).tickValues([])); // Keep ticks hidden, use axis label for clarity
+
+    svg.append("g")
+        .call(d3.axisLeft(y).ticks(5).tickFormat(d => `${d} ms`));
+
+    // Axis Labels
+    svg.append("text")
+        .attr("x", innerWidth / 2)
+        .attr("y", innerHeight + 45)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .style("fill", "#333")
+        .text("Page Load Events (chronological)");
+
+    svg.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -innerHeight / 2)
+        .attr("y", -45)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .style("fill", "#333")
+        .text("Load Time (ms)");
     
     // 1000ms SLA Line
     svg.append("line")
