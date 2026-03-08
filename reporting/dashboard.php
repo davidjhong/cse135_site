@@ -45,14 +45,10 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 
     <div class="charts-grid">
         <div class="chart-card">
-            <h3>Performance Timeline (Load Times)</h3>
-            <div id="performance-chart"></div>
-        </div>
+            <div id="performance-chart"></div> </div>
         <div class="chart-card">
-            <h3>Activity Distribution</h3>
-            <div id="activity-chart"></div>
-        </div>
-    </div>
+            <div id="activity-chart"></div> </div>
+    </div>  
 
     <script src="js/dashboard.js"></script>
     <script src="js/charts.js"></script>
