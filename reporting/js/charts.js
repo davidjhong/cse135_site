@@ -44,7 +44,7 @@ function drawDeviceCategoryChart(events) {
     const data = Object.entries(counts).filter(([, val]) => val > 0).map(([key, value]) => ({ key, value }));
 
     if (totalVisitors === 0) {
-        chartContainer.html('<p style="text-align:center;">No visitor data available.</p>');
+        chartContainer.html('<p class="chart-empty-state">No visitor data available.</p>');
         return;
     }
 
@@ -60,10 +60,7 @@ function drawDeviceCategoryChart(events) {
 
     // Title
     chartContainer.insert("div", ":first-child")
-        .style("text-align", "center")
-        .style("color", "#6c757d")
-        .style("font-size", "16px")
-        .style("margin-bottom", "10px")
+        .attr("class", "chart-title chart-title-small")
         .text("Visit by device category");
 
     // 3. Colors & Generators
@@ -80,16 +77,7 @@ function drawDeviceCategoryChart(events) {
 
     // Tooltip
     const tooltip = chartContainer.append("div")
-        .style("position", "absolute")
-        .style("pointer-events", "none")
-        .style("background", "rgba(80, 80, 80, 0.95)")
-        .style("color", "#fff")
-        .style("padding", "10px")
-        .style("border-radius", "4px")
-        .style("font-size", "13px")
-        .style("line-height", "1.4")
-        .style("opacity", 0)
-        .style("box-shadow", "0 2px 4px rgba(0,0,0,0.2)");
+        .attr("class", "chart-tooltip device-tooltip");
 
     // 4. Draw Slices
     svg.selectAll('allSlices')
@@ -104,7 +92,7 @@ function drawDeviceCategoryChart(events) {
             d3.select(this).style("opacity", 0.8);
             const percent = ((d.data.value / totalVisitors) * 100).toFixed(2);
             tooltip.style("opacity", 1)
-                .html(`<div style="border-bottom: 1px solid #777; margin-bottom: 4px; padding-bottom: 2px;">${d.data.key}</div>
+                .html(`<div class="chart-tooltip-heading">${d.data.key}</div>
                        Visitors: ${d.data.value}<br>
                        Percent Value: ${percent}%`);
         })
@@ -231,7 +219,7 @@ function drawVisitorTimelineChart(events) {
     }).sort((a, b) => a.date - b.date);
 
     if (data.length === 0) {
-        chartContainer.html('<p style="text-align:center; padding-top: 50px;">No timeline data available.</p>');
+        chartContainer.html('<p class="chart-empty-state-padded">No timeline data available.</p>');
         return;
     }
 
@@ -250,32 +238,25 @@ function drawVisitorTimelineChart(events) {
 
     // Top Title
     chartContainer.insert("div", ":first-child")
-        .style("text-align", "center")
-        .style("color", "#6c757d")
-        .style("font-size", "18px")
-        .style("margin-bottom", "5px")
+        .attr("class", "chart-title chart-title-medium")
         .text(`Visitors and New Visitors (${totalVis}/${totalNew})`);
 
     // Dynamic Legend Area (Matches the top left of your image)
     const legendDiv = chartContainer.append("div")
-        .style("position", "absolute")
-        .style("top", "45px")
+        .attr("class", "timeline-legend")
         .style("left", `${margin.left}px`)
-        .style("display", "flex")
-        .style("gap", "15px")
-        .style("font-size", "13px")
-        .style("color", "#777");
+        ;
 
     const updateLegend = (d) => {
         if (!d) return;
         const dateStr = d3.timeFormat("%d %b %Y")(d.date);
         legendDiv.html(`
-            <span style="font-weight:bold;">${dateStr}</span>
-            <span style="display:flex; align-items:center; gap:5px;">
-                <span style="width:12px; height:12px; background:#9cd2ff;"></span> Visitors: ${d.visitors}
+            <span class="timeline-legend-date">${dateStr}</span>
+            <span class="legend-item">
+                <span class="legend-color legend-color-visitors"></span> Visitors: ${d.visitors}
             </span>
-            <span style="display:flex; align-items:center; gap:5px;">
-                <span style="width:12px; height:12px; background:#3ea1f4;"></span> New Visitors: ${d.newVisitors}
+            <span class="legend-item">
+                <span class="legend-color legend-color-new-visitors"></span> New Visitors: ${d.newVisitors}
             </span>
         `);
     };
@@ -283,15 +264,7 @@ function drawVisitorTimelineChart(events) {
 
     // Tooltip Box
     const tooltip = chartContainer.append("div")
-        .style("position", "absolute")
-        .style("pointer-events", "none")
-        .style("background", "rgba(80, 80, 80, 0.95)")
-        .style("color", "#fff")
-        .style("padding", "10px")
-        .style("border-radius", "4px")
-        .style("font-size", "13px")
-        .style("line-height", "1.5")
-        .style("opacity", 0);
+        .attr("class", "chart-tooltip timeline-tooltip");
 
     // 3. Scales
     const x = d3.scaleTime().domain(d3.extent(data, d => d.date)).range([0, innerWidth]);
@@ -370,7 +343,7 @@ function drawVisitorTimelineChart(events) {
             // Update Tooltip
             const dateStr = d3.timeFormat("%Y/%m/%d")(d.date);
             tooltip.html(`
-                <div style="border-bottom: 1px solid #777; margin-bottom: 4px; padding-bottom: 2px;">${dateStr}</div>
+                <div class="chart-tooltip-heading">${dateStr}</div>
                 Visitors: ${d.visitors}<br>
                 New Visitors: ${d.newVisitors}
             `);

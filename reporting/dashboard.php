@@ -13,6 +13,7 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     <meta charset="UTF-8">
     <title>Analytics Dashboard</title>
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/charts.css">
     <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
@@ -40,7 +41,7 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
                 <tr><td colspan="5">Loading recent events...</td></tr>
             </tbody>
         </table>
-        <div id="table-controls" style="text-align: center; margin-top: 20px;"></div>
+        <div id="table-controls" class="table-controls"></div>
     </div>
 
     <div class="charts-grid">
