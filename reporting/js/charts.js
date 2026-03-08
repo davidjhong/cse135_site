@@ -188,26 +188,59 @@ function drawVisitorTimelineChart(events) {
     chartContainer.html("");
     chartContainer.style("position", "relative");
 
-    // 1. Group unique visitors by Date
-    const visitorsByDate = new Map();
-    events.filter(d => d.event_type === 'page_load').forEach(ev => {
-        const dateKey = new Date(ev.created_at).toISOString().split('T')[0];
-        if (!visitorsByDate.has(dateKey)) visitorsByDate.set(dateKey, new Set());
-        visitorsByDate.get(dateKey).add(ev.session_id);
+    // 1. Process data for Visitors vs New Visitors
+    const dailyStats = new Map();
+    const sessionFirstDate = new Map();
+
+    // Find the absolute first date for each session across ALL events to track "New" users
+    events.forEach(ev => {
+        if (!ev.created_at) return;
+        const dateKey = ev.created_at.split(' ')[0]; // Extract YYYY-MM-DD
+        if (!sessionFirstDate.has(ev.session_id) || dateKey < sessionFirstDate.get(ev.session_id)) {
+            sessionFirstDate.set(ev.session_id, dateKey);
+        }
     });
 
-    const data = Array.from(visitorsByDate, ([date, sessions]) => ({
-        date: new Date(date),
-        visitors: sessions.size
-    })).sort((a, b) => a.date - b.date);
+    // Aggregate daily visitors
+    events.filter(d => d.event_type === 'page_load').forEach(ev => {
+        if (!ev.created_at) return;
+        const dateKey = ev.created_at.split(' ')[0];
+        if (!dailyStats.has(dateKey)) {
+            // Force midnight so timezone offsets don't shift the day
+            dailyStats.set(dateKey, { date: new Date(dateKey + 'T00:00:00'), visitorsSet: new Set() });
+        }
+        dailyStats.get(dateKey).visitorsSet.add(ev.session_id);
+    });
+
+    // Build final data array comparing current date to first-seen date
+    const data = Array.from(dailyStats.values()).map(stat => {
+        let newVisCount = 0;
+        const currentDateStr = stat.date.toISOString().split('T')[0];
+        
+        stat.visitorsSet.forEach(sid => {
+            if (sessionFirstDate.get(sid) === currentDateStr) {
+                newVisCount++;
+            }
+        });
+
+        return {
+            date: stat.date,
+            visitors: stat.visitorsSet.size,
+            newVisitors: newVisCount
+        };
+    }).sort((a, b) => a.date - b.date);
 
     if (data.length === 0) {
-        chartContainer.html('<p style="text-align:center;">No timeline data available.</p>');
+        chartContainer.html('<p style="text-align:center; padding-top: 50px;">No timeline data available.</p>');
         return;
     }
 
+    const totalVis = d3.sum(data, d => d.visitors);
+    const totalNew = d3.sum(data, d => d.newVisitors);
+
     // 2. Setup Dimensions
-    const width = 560, height = 320, margin = {top: 40, right: 20, bottom: 30, left: 40};
+    const width = 560, height = 350;
+    const margin = {top: 70, right: 20, bottom: 30, left: 40};
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
@@ -215,35 +248,139 @@ function drawVisitorTimelineChart(events) {
         .attr("width", width).attr("height", height)
         .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // Title
-    svg.append("text")
-        .attr("x", innerWidth / 2)
-        .attr("y", -15)
-        .attr("text-anchor", "middle")
-        .style("font-size", "16px")
-        .style("fill", "#6c757d")
-        .text("Visitors and New Visitors Timeline");
+    // Top Title
+    chartContainer.insert("div", ":first-child")
+        .style("text-align", "center")
+        .style("color", "#6c757d")
+        .style("font-size", "18px")
+        .style("margin-bottom", "5px")
+        .text(`Visitors and New Visitors (${totalVis}/${totalNew})`);
+
+    // Dynamic Legend Area (Matches the top left of your image)
+    const legendDiv = chartContainer.append("div")
+        .style("position", "absolute")
+        .style("top", "45px")
+        .style("left", `${margin.left}px`)
+        .style("display", "flex")
+        .style("gap", "15px")
+        .style("font-size", "13px")
+        .style("color", "#777");
+
+    const updateLegend = (d) => {
+        if (!d) return;
+        const dateStr = d3.timeFormat("%d %b %Y")(d.date);
+        legendDiv.html(`
+            <span style="font-weight:bold;">${dateStr}</span>
+            <span style="display:flex; align-items:center; gap:5px;">
+                <span style="width:12px; height:12px; background:#9cd2ff;"></span> Visitors: ${d.visitors}
+            </span>
+            <span style="display:flex; align-items:center; gap:5px;">
+                <span style="width:12px; height:12px; background:#3ea1f4;"></span> New Visitors: ${d.newVisitors}
+            </span>
+        `);
+    };
+    updateLegend(data[data.length - 1]); // Default to latest date
+
+    // Tooltip Box
+    const tooltip = chartContainer.append("div")
+        .style("position", "absolute")
+        .style("pointer-events", "none")
+        .style("background", "rgba(80, 80, 80, 0.95)")
+        .style("color", "#fff")
+        .style("padding", "10px")
+        .style("border-radius", "4px")
+        .style("font-size", "13px")
+        .style("line-height", "1.5")
+        .style("opacity", 0);
 
     // 3. Scales
     const x = d3.scaleTime().domain(d3.extent(data, d => d.date)).range([0, innerWidth]);
-    const y = d3.scaleLinear().domain([0, d3.max(data, d => d.visitors) || 10]).range([innerHeight, 0]);
+    const yMax = Math.max(d3.max(data, d => d.visitors) || 5, 5); // Base ceiling
+    const y = d3.scaleLinear().domain([0, yMax]).range([innerHeight, 0]);
 
-    // 4. Area Generator (Matching the light blue aesthetic)
-    const area = d3.area()
-        .x(d => x(d.date))
-        .y0(innerHeight)
-        .y1(d => y(d.visitors))
-        .curve(d3.curveMonotoneX);
+    // 4. Area Generators
+    const areaVisitors = d3.area()
+        .x(d => x(d.date)).y0(innerHeight).y1(d => y(d.visitors)).curve(d3.curveMonotoneX);
 
+    const areaNewVisitors = d3.area()
+        .x(d => x(d.date)).y0(innerHeight).y1(d => y(d.newVisitors)).curve(d3.curveMonotoneX);
+
+    // Draw Total Visitors Area (Light Blue - Back)
     svg.append("path")
         .datum(data)
-        .attr("fill", "#9cd2ff") // Light blue area
-        .attr("stroke", "#3ea1f4") // Darker blue line
-        .attr("stroke-width", 2)
-        .attr("d", area)
+        .attr("fill", "#9cd2ff")
+        .attr("stroke", "#7bb8f5")
+        .attr("stroke-width", 1.5)
+        .attr("d", areaVisitors)
         .attr("opacity", 0.7);
 
+    // Draw New Visitors Area (Dark Blue - Front)
+    svg.append("path")
+        .datum(data)
+        .attr("fill", "#3ea1f4")
+        .attr("stroke", "#2880c8")
+        .attr("stroke-width", 1.5)
+        .attr("d", areaNewVisitors)
+        .attr("opacity", 0.9);
+
     // 5. Axes
-    svg.append("g").attr("transform", `translate(0,${innerHeight})`).call(d3.axisBottom(x).ticks(5));
-    svg.append("g").call(d3.axisLeft(y).ticks(5));
+    svg.append("g")
+        .attr("transform", `translate(0,${innerHeight})`)
+        .call(d3.axisBottom(x).ticks(5).tickFormat(d3.timeFormat("%b %d")))
+        .attr("color", "#888");
+
+    svg.append("g").call(d3.axisLeft(y).ticks(5)).attr("color", "#888");
+
+    // 6. Interactive Hover Line
+    const hoverLine = svg.append("line")
+        .attr("stroke", "#666").attr("stroke-width", 1)
+        .attr("y1", 0).attr("y2", innerHeight)
+        .style("opacity", 0);
+
+    const bisectDate = d3.bisector(d => d.date).left;
+
+    // Invisible overlay to catch mouse events
+    svg.append("rect")
+        .attr("width", innerWidth).attr("height", innerHeight)
+        .attr("fill", "none").attr("pointer-events", "all")
+        .on("mouseover", () => {
+            hoverLine.style("opacity", 1);
+            tooltip.style("opacity", 1);
+        })
+        .on("mouseout", () => {
+            hoverLine.style("opacity", 0);
+            tooltip.style("opacity", 0);
+            updateLegend(data[data.length - 1]); // Reset legend
+        })
+        .on("mousemove", (event) => {
+            // Find closest data point
+            const x0 = x.invert(d3.pointer(event)[0]);
+            const i = bisectDate(data, x0, 1);
+            const d0 = data[i - 1];
+            const d1 = data[i];
+            let d = d0;
+            if (d0 && d1) d = x0 - d0.date > d1.date - x0 ? d1 : d0;
+            else d = d1 || d0;
+
+            if(!d) return;
+
+            const cx = x(d.date);
+            hoverLine.attr("x1", cx).attr("x2", cx);
+
+            // Update Tooltip
+            const dateStr = d3.timeFormat("%Y/%m/%d")(d.date);
+            tooltip.html(`
+                <div style="border-bottom: 1px solid #777; margin-bottom: 4px; padding-bottom: 2px;">${dateStr}</div>
+                Visitors: ${d.visitors}<br>
+                New Visitors: ${d.newVisitors}
+            `);
+
+            // Calculate Tooltip Position
+            let tipX = cx + margin.left + 15;
+            if (tipX + 120 > width) tipX = cx + margin.left - 130; // Flip if near edge
+            tooltip.style("left", `${tipX}px`).style("top", `${margin.top + y(d.visitors) / 2}px`);
+
+            // Update Top Legend
+            updateLegend(d);
+        });
 }
