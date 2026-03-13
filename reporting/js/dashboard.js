@@ -173,6 +173,7 @@ window.saveReport = function(category) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             category: category,
+            chart_name: chartName,
             comment_text: text
         })
     })
@@ -206,13 +207,15 @@ window.loadReports = function() {
 
             const fragment = document.createDocumentFragment();
             data.forEach(report => {
+                const categoryName = report.category || 'Unknown';
+                const chartName = report.chart_name || 'Unknown Chart';
 
                 const card = document.createElement('div');
                 card.className = 'report-card';
 
                 const title = document.createElement('h4');
                 title.className = 'report-card-title';
-                title.textContent = `${report.category} Report`;
+                title.textContent = `${categoryName} Report - ${chartName}`;
 
                 const body = document.createElement('p');
                 body.className = 'report-card-body';

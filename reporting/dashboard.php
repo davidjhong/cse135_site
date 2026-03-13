@@ -71,7 +71,7 @@ function canView($section, $allowedSections) {
             <?php if ($userRole !== 'viewer'): ?>
             <div class="report-input-area">
                 <textarea id="performance-comment" placeholder="Add Performance Analysis..."></textarea>
-                <button onclick="saveReport('performance')" class="save-btn">Save Report</button>
+                <button onclick="saveReport('performance', 'Traffic Overview Timeline')" class="save-btn">Save Report</button>
             </div>
             <?php endif; ?>
         </div>
@@ -84,7 +84,7 @@ function canView($section, $allowedSections) {
             <?php if ($userRole !== 'viewer'): ?>
             <div class="report-input-area">
                 <textarea id="behavior-comment" placeholder="Add Behavior Analysis..."></textarea>
-                <button onclick="saveReport('behavior')" class="save-btn">Save Report</button>
+                <button onclick="saveReport('behavior', 'Device Category Pie Chart')" class="save-btn">Save Report</button>
             </div>
             <?php endif; ?>
         </div>

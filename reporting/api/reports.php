@@ -31,9 +31,9 @@ switch ($method) {
         }
 
         $input = json_decode(file_get_contents("php://input"), true);
-        if (!isset($input['category']) || !isset($input['comment_text'])) {
+        if (!isset($input['category']) || !isset($input['chart_name']) || !isset($input['comment_text'])) {
             http_response_code(400);
-            exit(json_encode(["error" => "Missing category or comment_text"]));
+            exit(json_encode(["error" => "Missing category, chart_name, or comment_text"]));
         }
 
         // Fetch the user's ID securely using their session username
@@ -46,8 +46,8 @@ switch ($method) {
             exit(json_encode(["error" => "User not found"]));
         }
 
-        $stmt = $pdo->prepare("INSERT INTO reports (user_id, category, comment_text) VALUES (?, ?, ?)");
-        $stmt->execute([$userId, $input['category'], $input['comment_text']]);
+        $stmt = $pdo->prepare("INSERT INTO reports (user_id, category, chart_name, comment_text) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$userId, $input['category'], $input['chart_name'], $input['comment_text']]);
         
         http_response_code(201);
         echo json_encode(["message" => "Report saved successfully"]);
@@ -56,7 +56,7 @@ switch ($method) {
     case 'GET':
         // Join with the users table to get the author's username
         $stmt = $pdo->query("
-            SELECT r.id, r.category, r.comment_text, r.created_at, u.username 
+            SELECT r.id, r.category, r.chart_name, r.comment_text, r.created_at, u.username 
             FROM reports r 
             JOIN users u ON r.user_id = u.id 
             ORDER BY r.created_at DESC
