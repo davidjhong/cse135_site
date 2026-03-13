@@ -1,7 +1,8 @@
 <?php
+session_start();
 header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH");
 
 $host = 'localhost';
 $db   = 'analytics_db';
@@ -16,12 +17,17 @@ try {
 }
 
 $method = $_SERVER['REQUEST_METHOD'];
-
-// Extract the ID from the URL (e.g., /api/events/3 -> id = 3)
 $request_uri = explode('/', trim($_SERVER['REQUEST_URI'], '/'));
 $id = (isset($request_uri[2]) && is_numeric($request_uri[2])) ? intval($request_uri[2]) : null;
-
 $input = json_decode(file_get_contents("php://input"), true);
+
+// Only Super Admins can mutate data
+if (in_array($method, ['PUT', 'PATCH', 'DELETE'])) {
+    if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'super_admin') {
+        http_response_code(403);
+        exit(json_encode(["error" => "Forbidden: Only Super Admins can modify or delete records."]));
+    }
+}
 
 switch ($method) {  
     case 'GET':

@@ -57,9 +57,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-    function renderTable() {
+function renderTable() {
         tbody.replaceChildren();
         
+        // Dynamically append the "Actions" header for super admins
+        const headerRow = document.getElementById('table-header-row');
+        if (typeof currentUserRole !== 'undefined' && currentUserRole === 'super_admin' && headerRow && !document.getElementById('header-actions')) {
+            const th = document.createElement('th');
+            th.id = 'header-actions';
+            th.textContent = 'Actions';
+            headerRow.appendChild(th);
+        }
+
         const displayEvents = allEvents.slice(0, MAX_DISPLAY_EVENTS);
         const limit = isExpanded ? displayEvents.length : Math.min(INITIAL_LIMIT, displayEvents.length);
         const fragment = document.createDocumentFragment();
@@ -79,7 +88,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const userId = parsedRaw.user_id || event.session_id || 'Legacy/Unknown';
             const sessionId = event.session_id || 'unknown';
             const eventType = event.event_type || 'unknown';
-
             const rawDataText = event.raw_data ? JSON.stringify(parsedRaw, null, 2) : 'No extra data';
 
             const row = document.createElement('tr');
@@ -115,8 +123,22 @@ document.addEventListener('DOMContentLoaded', () => {
             payloadCell.appendChild(viewButton);
 
             row.append(idCell, userCell, sessionCell, eventTypeCell, createdAtCell, payloadCell);
+
+            // Conditionally append the Delete button cell if Super Admin
+            if (typeof currentUserRole !== 'undefined' && currentUserRole === 'super_admin') {
+                const actionCell = document.createElement('td');
+                const deleteButton = document.createElement('button');
+                deleteButton.type = 'button';
+                deleteButton.className = 'delete-btn';
+                deleteButton.textContent = 'Delete';
+                deleteButton.onclick = () => deleteEvent(event.id);
+                actionCell.appendChild(deleteButton);
+                row.appendChild(actionCell);
+            }
+
             fragment.appendChild(row);
         }
+        
         tbody.appendChild(fragment);
 
         if (!toggleButton) return;
@@ -138,5 +160,20 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleButton.hidden = true;
             controls.hidden = true;
         }
+    }
+
+    function deleteEvent(id) {
+        if (!confirm(`Are you sure you want to permanently delete Event ID ${id}?`)) return;
+
+        fetch(`/api/events/${id}`, { method: 'DELETE' })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to delete or unauthorized.');
+                return response.json();
+            })
+            .then(data => {
+                alert(data.message);
+                location.reload();
+            })
+            .catch(error => alert(error.message));
     }
 });

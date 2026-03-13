@@ -40,3 +40,18 @@ a.logout:hover {
     text-align: center;
     margin-top: 20px;
 }
+
+.delete-btn {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    transition: background-color 0.2s;
+}
+
+.delete-btn:hover {
+    background-color: #c82333;
+}
