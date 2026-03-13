@@ -15,10 +15,20 @@ svg {
     padding: 1.5rem;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: visible;
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-card:last-child {
+    margin-bottom: 0;
 }
 
 .chart-panel {
     position: relative;
+    overflow: visible;
+    min-height: auto;
 }
 
 /* === Performance: 2-row layout box with improved spacing === */
@@ -59,9 +69,9 @@ svg {
 .lower-charts-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 0;
     margin-bottom: 20px;
-    overflow-x: hidden;
+    overflow-x: visible;
 }
 
 /* === Behavior: 2 charts + 2 comment inputs side by side === */
@@ -69,14 +79,16 @@ svg {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
-    margin-bottom: 8px;
+    margin-bottom: 16px;
+    overflow: visible;
 }
 
 .behavior-report-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
-    margin-top: 8px;
+    margin-top: 0;
+    overflow: visible;
 }
 
 .chart-empty-state {
@@ -205,7 +217,11 @@ svg {
 .badge.activity_update { background-color: #007bff; }
 .badge.page_exit { background-color: #6c757d; }
 
-#loadtime-chart, #error-rate-chart, #visitor-timeline-chart, #device-category-chart { position: relative; }
+#loadtime-chart, #error-rate-chart, #visitor-timeline-chart, #device-category-chart { 
+    position: relative;
+    overflow: visible;
+    min-height: 300px;
+}
 .chart-title { text-align: center; color: #6c757d; font-size: 18px; margin-bottom: 5px; }
 .chart-title-small { font-size: 16px; margin-bottom: 10px; }
 .chart-empty-state { text-align: center; padding-top: 50px; color: #6c757d; }
