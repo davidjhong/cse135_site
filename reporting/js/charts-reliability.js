@@ -1,5 +1,16 @@
 window.drawReliabilityDashboard = function(events) {
     // ==========================================
+    // CENTRALIZED COLOR PALETTE FOR ALL CHARTS
+    // ==========================================
+    const FAILURE_TYPES = ['404 Not Found', 'Broken Asset', 'API Failure', 'Runtime JS Error'];
+    const FAILURE_COLORS = {
+        '404 Not Found': '#dc3545',      // Red (error/danger)
+        'Broken Asset': '#fd7e14',       // Orange (warning/attention)
+        'API Failure': '#0099cc',        // Blue (info/network)
+        'Runtime JS Error': '#6c757d'    // Gray (technical/debug)
+    };
+
+    // ==========================================
     // FAILURE EVENT NORMALIZATION
     // ==========================================
     
@@ -42,8 +53,6 @@ window.drawReliabilityDashboard = function(events) {
     const failuresByType = new Map();
     const failuresByPage = new Map();
     const failuresByUrl = new Map();
-
-    const FAILURE_TYPES = ['404 Not Found', 'Broken Asset', 'API Failure', 'Runtime JS Error'];
     
     // Initialize counters
     FAILURE_TYPES.forEach(type => {
@@ -60,7 +69,7 @@ window.drawReliabilityDashboard = function(events) {
         }
 
         // Count by page and type
-        const pageKey = failure.pagePath || '/unknown';
+        const pageKey = failure.pagePath || '/';
         if (!failuresByPage.has(pageKey)) {
             failuresByPage.set(pageKey, new Map());
         }
@@ -85,9 +94,9 @@ window.drawReliabilityDashboard = function(events) {
 
     // Draw charts if data exists
     if (normalizedFailures.length > 0) {
-        drawFailureTypeChart(failuresByType);
-        drawFailureByPageChart(failuresByPage);
-        drawTopBrokenUrlsChart(failuresByUrl, normalizedFailures);
+        drawFailureTypeChart(failuresByType, FAILURE_COLORS);
+        drawFailureByPageChart(failuresByPage, FAILURE_COLORS, FAILURE_TYPES);
+        drawTopBrokenUrlsChart(failuresByUrl, normalizedFailures, FAILURE_COLORS);
     }
 };
 
@@ -161,7 +170,7 @@ function normalizeEvent(event, pagePath, timestamp) {
 // CHART 1: Failure Events by Type
 // ==========================================
 
-function drawFailureTypeChart(failuresByType) {
+function drawFailureTypeChart(failuresByType, colorMap) {
     const container = d3.select("#reliability-type-chart");
     if (container.empty()) return;
 
@@ -184,14 +193,9 @@ function drawFailureTypeChart(failuresByType) {
 
     const totalFailures = data.reduce((sum, d) => sum + d.count, 0);
 
-    // Color scheme for failure types
-    const colorScale = d3.scaleOrdinal()
-        .domain(['404 Not Found', 'Broken Asset', 'API Failure', 'Runtime JS Error'])
-        .range(['#ff6b6b', '#ffa500', '#fd7e14', '#6c757d']);
-
     const width = Math.max(container.node().getBoundingClientRect().width || 500, 500);
     const height = 300;
-    const margin = { top: 50, right: 30, bottom: 30, left: 60 };
+    const margin = { top: 50, right: 30, bottom: 30, left: 140 };  // Increased from 60 to 140
     const innerW = width - margin.left - margin.right;
     const innerH = height - margin.top - margin.bottom;
 
@@ -223,7 +227,7 @@ function drawFailureTypeChart(failuresByType) {
         .attr("class", "chart-tooltip")
         .style("opacity", 0);
 
-    // Bars
+    // Bars - color by failure type using centralized palette
     const bars = svg.selectAll("rect.failure-bar")
         .data(data)
         .join("rect")
@@ -232,7 +236,7 @@ function drawFailureTypeChart(failuresByType) {
         .attr("y", d => y(d.type))
         .attr("width", d => x(d.count))
         .attr("height", y.bandwidth())
-        .attr("fill", d => colorScale(d.type))
+        .attr("fill", d => colorMap[d.type] || '#999')
         .style("cursor", "pointer")
         .on("mouseover", function(event, d) {
             d3.select(this).attr("opacity", 0.85);
@@ -282,25 +286,20 @@ function drawFailureTypeChart(failuresByType) {
 // CHART 2: Failure Events by Page
 // ==========================================
 
-function drawFailureByPageChart(failuresByPage) {
+function drawFailureByPageChart(failuresByPage, colorMap, failureTypes) {
     const container = d3.select("#reliability-page-chart");
     if (container.empty()) return;
 
     container.html("").style("position", "relative");
 
     // Build data with all failure types per page
-    const FAILURE_TYPES = ['404 Not Found', 'Broken Asset', 'API Failure', 'Runtime JS Error'];
-    const colorScale = d3.scaleOrdinal()
-        .domain(FAILURE_TYPES)
-        .range(['#ff6b6b', '#ffa500', '#fd7e14', '#6c757d']);
-
     const pageData = Array.from(failuresByPage.entries())
         .map(([page, typeMap]) => {
-            const total = FAILURE_TYPES.reduce((sum, type) => sum + (typeMap.get(type) || 0), 0);
+            const total = failureTypes.reduce((sum, type) => sum + (typeMap.get(type) || 0), 0);
             return {
                 page: page,
                 total: total,
-                ...Object.fromEntries(FAILURE_TYPES.map(type => [type, typeMap.get(type) || 0]))
+                ...Object.fromEntries(failureTypes.map(type => [type, typeMap.get(type) || 0]))
             };
         })
         .filter(d => d.total > 0)
@@ -314,8 +313,9 @@ function drawFailureByPageChart(failuresByPage) {
     }
 
     const width = Math.max(container.node().getBoundingClientRect().width || 500, 500);
-    const height = 60 + pageData.length * 35;
-    const margin = { top: 50, right: 30, bottom: 40, left: 150 };
+    // Dynamically adjust height based on number of pages: 35px per page, min 250px
+    const height = Math.max(250, 80 + pageData.length * 40);
+    const margin = { top: 50, right: 30, bottom: 40, left: 180 };
     const innerW = width - margin.left - margin.right;
     const innerH = height - margin.top - margin.bottom;
 
@@ -347,9 +347,9 @@ function drawFailureByPageChart(failuresByPage) {
         .attr("class", "chart-tooltip")
         .style("opacity", 0);
 
-    // Stacked bars
+    // Stacked bars - using centralized color map
     const stack = d3.stack()
-        .keys(FAILURE_TYPES);
+        .keys(failureTypes);
 
     const stackedData = stack(pageData);
 
@@ -357,7 +357,7 @@ function drawFailureByPageChart(failuresByPage) {
         .data(stackedData)
         .join("g")
         .attr("class", "failure-type-group")
-        .attr("fill", d => colorScale(d.key))
+        .attr("fill", d => colorMap[d.key] || '#999')
         .selectAll("rect")
         .data(d => d)
         .join("rect")
@@ -389,22 +389,22 @@ function drawFailureByPageChart(failuresByPage) {
 
     // Legend
     const legendY = -35;
-    const legendX = innerW - 320;
+    const legendX = innerW - 380;
     
     svg.selectAll("circle.legend-dot")
-        .data(FAILURE_TYPES)
+        .data(failureTypes)
         .join("circle")
         .attr("class", "legend-dot")
-        .attr("cx", (d, i) => legendX + (i % 2) * 150)
+        .attr("cx", (d, i) => legendX + (i % 2) * 180)
         .attr("cy", (d, i) => legendY + Math.floor(i / 2) * 15)
         .attr("r", 4)
-        .attr("fill", d => colorScale(d));
+        .attr("fill", d => colorMap[d] || '#999');
 
     svg.selectAll("text.legend-text")
-        .data(FAILURE_TYPES)
+        .data(failureTypes)
         .join("text")
         .attr("class", "legend-text")
-        .attr("x", (d, i) => legendX + 12 + (i % 2) * 150)
+        .attr("x", (d, i) => legendX + 12 + (i % 2) * 180)
         .attr("y", (d, i) => legendY + 4 + Math.floor(i / 2) * 15)
         .attr("font-size", "11px")
         .text(d => d);
@@ -419,17 +419,46 @@ function drawFailureByPageChart(failuresByPage) {
 }
 
 // ==========================================
+// UTILITY: Smart URL Truncation
+// ==========================================
+
+function smartTruncateUrl(url, maxLength) {
+    if (url.length <= maxLength) return url;
+    
+    try {
+        const urlObj = new URL(url);
+        const domain = urlObj.hostname;
+        const path = urlObj.pathname;
+        
+        // Try to show domain + key path segment
+        if (domain.length > maxLength) {
+            return domain.substring(0, maxLength - 3) + '...';
+        }
+        
+        const remaining = maxLength - domain.length - 1;  // -1 for separator
+        if (remaining > 5) {
+            const availablePathLength = remaining - 3;  // Reserve 3 for '...'
+            return domain + '/' + path.substring(0, availablePathLength) + '...';
+        }
+        
+        return domain + '/...';
+    } catch (e) {
+        // Fallback: simple truncation from end
+        return url.substring(0, maxLength - 3) + '...';
+    }
+}
+
+// ==========================================
 // CHART 3: Top Broken URLs / Assets
 // ==========================================
 
-function drawTopBrokenUrlsChart(failuresByUrl, allFailures) {
+function drawTopBrokenUrlsChart(failuresByUrl, allFailures, colorMap) {
     const container = d3.select("#reliability-urls-chart");
     if (container.empty()) return;
 
     container.html("").style("position", "relative");
 
     // Build data with url and type info
-    const urlData = [];
     const urlMap = new Map();
 
     for (const failure of allFailures) {
@@ -462,13 +491,9 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures) {
         return;
     }
 
-    const colorScale = d3.scaleOrdinal()
-        .domain(['404 Not Found', 'Broken Asset', 'API Failure', 'Runtime JS Error'])
-        .range(['#ff6b6b', '#ffa500', '#fd7e14', '#6c757d']);
-
     const width = Math.max(container.node().getBoundingClientRect().width || 500, 500);
-    const height = 60 + topUrls.length * 30;
-    const margin = { top: 50, right: 30, bottom: 40, left: 180 };
+    const height = 60 + topUrls.length * 35;
+    const margin = { top: 50, right: 30, bottom: 40, left: 240 };  // Increased for longer labels
     const innerW = width - margin.left - margin.right;
     const innerH = height - margin.top - margin.bottom;
 
@@ -499,9 +524,9 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures) {
     const tooltip = container.append("div")
         .attr("class", "chart-tooltip")
         .style("opacity", 0)
-        .style("max-width", "300px");
+        .style("max-width", "320px");
 
-    // Bars with gradient based on dominant failure type
+    // Bars colored by dominant failure type
     svg.selectAll("rect.url-bar")
         .data(topUrls)
         .join("rect")
@@ -511,7 +536,7 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures) {
         .attr("width", d => x(d.count))
         .attr("height", y.bandwidth())
         .attr("fill", d => {
-            // Use color of most common failure type for this URL
+            // Color by most common failure type for this URL
             let maxType = '404 Not Found';
             let maxCount = 0;
             d.types.forEach((count, type) => {
@@ -520,7 +545,7 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures) {
                     maxType = type;
                 }
             });
-            return colorScale(maxType);
+            return colorMap[maxType] || '#999';
         })
         .style("cursor", "pointer")
         .on("mouseover", function(event, d) {
@@ -531,9 +556,11 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures) {
                 .join('<br/>');
 
             tooltip.style("opacity", 1)
-                .html(`<div class="chart-tooltip-heading" style="word-break: break-all;">${truncateUrl(d.url, 40)}</div>
-                       <div>Total Failures: ${d.count}</div>
-                       <div style="border-top: 1px solid #777; margin-top: 4px; padding-top: 4px; font-size: 11px;">${typesList}</div>`);
+                .html(`<div class="chart-tooltip-heading" style="word-break: break-word; margin-bottom: 8px;">
+                       <strong>${d.url}</strong>
+                       </div>
+                       <div style="margin-bottom: 6px;">Total Failures: <strong>${d.count}</strong></div>
+                       <div style="border-top: 1px solid #999; padding-top: 6px; margin-top: 6px; font-size: 11px;">${typesList}</div>`);
         })
         .on("mousemove", (event) => {
             tooltip.style("left", (event.pageX + 10) + "px")
@@ -544,18 +571,18 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures) {
             tooltip.style("opacity", 0);
         });
 
-    // URL labels (truncated)
+    // URL labels - smart truncation
     svg.selectAll("text.url-label")
         .data(topUrls)
         .join("text")
         .attr("class", "url-label")
-        .attr("x", -5)
+        .attr("x", -8)
         .attr("y", (d, i) => y(i) + y.bandwidth() / 2)
         .attr("dy", "0.35em")
         .attr("text-anchor", "end")
         .attr("font-size", "11px")
         .attr("fill", "#333")
-        .text(d => truncateUrl(d.url, 35))
+        .text(d => smartTruncateUrl(d.url, 40))
         .style("cursor", "pointer")
         .on("mouseover", function() {
             d3.select(this).attr("fill", "#0056b3");
@@ -580,13 +607,4 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures) {
     svg.append("g")
         .attr("transform", `translate(0,${innerH})`)
         .call(d3.axisBottom(x).ticks(4));
-}
-
-// ==========================================
-// UTILITY FUNCTIONS
-// ==========================================
-
-function truncateUrl(url, maxLength) {
-    if (url.length <= maxLength) return url;
-    return url.substring(0, maxLength - 3) + "...";
 }
