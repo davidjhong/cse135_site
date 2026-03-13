@@ -91,13 +91,13 @@ function drawTrendChart(dataByDate, getP) {
 
     if (trendData.length === 0) return;
 
-    const width = container.node().getBoundingClientRect().width || 800;
+    const width = Math.max(container.node().getBoundingClientRect().width || 500, 500);
     const height = 300;
     const margin = { top: 50, right: 30, bottom: 30, left: 60 };
     const innerW = width - margin.left - margin.right;
     const innerH = height - margin.top - margin.bottom;
 
-    const svg = container.append("svg").attr("width", width).attr("height", height)
+    const svg = container.append("svg").attr("width", width).attr("height", height).style("max-width", "100%")
         .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
     container.insert("div", ":first-child").attr("class", "chart-title").text("Overall Load Experience by Day");
@@ -107,35 +107,45 @@ function drawTrendChart(dataByDate, getP) {
     const yMax = d3.max(trendData, d => d.p90) * 1.15;
     const y = d3.scaleLinear().domain([0, yMax]).range([innerH, 0]);
 
-    // Performance band backgrounds
+    // Performance band backgrounds with stronger visual distinction
     const bandData = [
-        { max: 500, color: '#d4edda', label: 'Excellent' },
-        { max: 1500, color: '#fff3cd', label: 'Good' },
-        { max: 3000, color: '#ffe5d4', label: 'Slow' },
-        { max: yMax, color: '#f8d7da', label: 'Poor' }
+        { max: 500, color: '#c8e6c9', label: 'Excellent' },
+        { max: 1500, color: '#ffe0b2', label: 'Good' },
+        { max: 3000, color: '#ffccbc', label: 'Slow' },
+        { max: yMax, color: '#ffcdd2', label: 'Poor' }
     ];
     let prevMax = 0;
-    bandData.forEach(band => {
+    bandData.forEach((band, idx) => {
+        // Band background rectangle
         svg.append("rect")
             .attr("x", 0).attr("y", y(band.max))
             .attr("width", innerW).attr("height", y(prevMax) - y(band.max))
-            .attr("fill", band.color).attr("opacity", 0.3);
+            .attr("fill", band.color).attr("opacity", 0.5);
+        // Boundary line between zones
+        if (idx < bandData.length - 1) {
+            svg.append("line")
+                .attr("x1", 0).attr("x2", innerW)
+                .attr("y1", y(band.max)).attr("y2", y(band.max))
+                .attr("stroke", "#bbb").attr("stroke-width", 1).attr("opacity", 0.6);
+        }
         prevMax = band.max;
     });
 
-    // P90 Line (Slow Load Time)
-    svg.append("path").datum(trendData).attr("fill", "none").attr("stroke", "#dc3545").attr("stroke-width", 2.5)
-        .attr("d", d3.line().x(d => x(d.date)).y(d => y(d.p90)).curve(d3.curveMonotoneX));
-
-    // P50 Line (Typical Load Time)
-    svg.append("path").datum(trendData).attr("fill", "none").attr("stroke", "#007bff").attr("stroke-width", 2.5)
+    // P50 Line (Typical Load Time) - draw first so it sits below
+    svg.append("path").datum(trendData).attr("fill", "none").attr("stroke", "#0056b3").attr("stroke-width", 3)
+        .attr("stroke-linecap", "round").attr("stroke-linejoin", "round")
         .attr("d", d3.line().x(d => x(d.date)).y(d => y(d.p50)).curve(d3.curveMonotoneX));
+
+    // P90 Line (Slow Load Time) - draw last so it sits on top
+    svg.append("path").datum(trendData).attr("fill", "none").attr("stroke", "#c82333").attr("stroke-width", 3)
+        .attr("stroke-linecap", "round").attr("stroke-linejoin", "round")
+        .attr("d", d3.line().x(d => x(d.date)).y(d => y(d.p90)).curve(d3.curveMonotoneX));
 
     // Legend
     const legendX = innerW - 240;
-    svg.append("circle").attr("cx", legendX).attr("cy", -35).attr("r", 4).attr("fill", "#007bff");
+    svg.append("circle").attr("cx", legendX).attr("cy", -35).attr("r", 4).attr("fill", "#0056b3");
     svg.append("text").attr("x", legendX + 12).attr("y", -30).attr("font-size", "12px").text("Typical Load Time (Median)");
-    svg.append("circle").attr("cx", legendX).attr("cy", -18).attr("r", 4).attr("fill", "#dc3545");
+    svg.append("circle").attr("cx", legendX).attr("cy", -18).attr("r", 4).attr("fill", "#c82333");
     svg.append("text").attr("x", legendX + 12).attr("y", -13).attr("font-size", "12px").text("Slow Load Time (90th %)");
 
     // Tooltip
@@ -210,20 +220,20 @@ function drawPageComparisonChart(dataByPath, getP) {
 
     if (pageData.length === 0) return;
 
-    const width = container.node().getBoundingClientRect().width || 500;
-    const height = 250 + pageData.length * 20;
+    const width = Math.max(container.node().getBoundingClientRect().width || 500, 500);
+    const height = 200 + pageData.length * 28;
     const margin = { top: 50, right: 30, bottom: 40, left: 120 };
     const innerW = width - margin.left - margin.right;
     const innerH = height - margin.top - margin.bottom;
 
-    const svg = container.append("svg").attr("width", width).attr("height", height)
+    const svg = container.append("svg").attr("width", width).attr("height", height).style("max-width", "100%")
         .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
     container.insert("div", ":first-child").attr("class", "chart-title").text("Performance by Page");
     container.insert("p", "div + div").attr("class", "chart-subtitle").html("Typical vs Slow Load Time (sorted by slow performance)");
 
     const x = d3.scaleLinear().domain([0, d3.max(pageData, d => d.slow) * 1.1]).range([0, innerW]);
-    const y = d3.scaleBand().domain(pageData.map(d => d.path)).range([0, innerH]).padding(0.3);
+    const y = d3.scaleBand().domain(pageData.map(d => d.path)).range([0, innerH]).padding(0.25);
 
     const tooltip = container.append("div").attr("class", "chart-tooltip");
 
@@ -234,8 +244,8 @@ function drawPageComparisonChart(dataByPath, getP) {
     // Typical bar (blue)
     barG.append("rect")
         .attr("x", 0).attr("y", 0)
-        .attr("width", d => x(d.typical)).attr("height", y.bandwidth() / 2 - 2)
-        .attr("fill", "#007bff").attr("opacity", 0.8)
+        .attr("width", d => x(d.typical)).attr("height", y.bandwidth() * 0.45)
+        .attr("fill", "#007bff").attr("opacity", 0.85)
         .style("cursor", "pointer")
         .on("mouseover", function(event, d) {
             d3.select(this).attr("opacity", 1);
@@ -246,7 +256,7 @@ function drawPageComparisonChart(dataByPath, getP) {
             tooltip.style("opacity", 1).html(`
                 <div style="font-weight: bold; margin-bottom: 6px;">${d.path}</div>
                 <div style="margin-bottom: 4px;">
-                    <div style="font-weight: 600; color: #007bff;">Typical Load Time: ${Math.round(d.typical)} ms</div>
+                    <div style="font-weight: 600; color: #0056b3;">Typical Load Time: ${Math.round(d.typical)} ms</div>
                     <div style="font-size: 11px; color: #ccc; margin-top: 2px;">Median of ${d.count} recorded loads</div>
                 </div>
                 <div style="border-top: 1px solid #666; padding-top: 4px; margin-top: 4px; font-size: 11px; color: #aaa;">
@@ -257,13 +267,13 @@ function drawPageComparisonChart(dataByPath, getP) {
         .on("mousemove", (event) => {
             tooltip.style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 28) + "px");
         })
-        .on("mouseout", function() { d3.select(this).attr("opacity", 0.8); tooltip.style("opacity", 0); });
+        .on("mouseout", function() { d3.select(this).attr("opacity", 0.85); tooltip.style("opacity", 0); });
 
     // Slow bar (red) - offset below
     barG.append("rect")
-        .attr("x", 0).attr("y", y.bandwidth() / 2 + 2)
-        .attr("width", d => x(d.slow)).attr("height", y.bandwidth() / 2 - 2)
-        .attr("fill", "#dc3545").attr("opacity", 0.8)
+        .attr("x", 0).attr("y", y.bandwidth() * 0.55)
+        .attr("width", d => x(d.slow)).attr("height", y.bandwidth() * 0.45)
+        .attr("fill", "#c82333").attr("opacity", 0.85)
         .style("cursor", "pointer")
         .on("mouseover", function(event, d) {
             d3.select(this).attr("opacity", 1);
@@ -271,7 +281,7 @@ function drawPageComparisonChart(dataByPath, getP) {
             tooltip.style("opacity", 1).html(`
                 <div style="font-weight: bold; margin-bottom: 6px;">${d.path}</div>
                 <div style="margin-bottom: 4px;">
-                    <div style="font-weight: 600; color: #dc3545;">Slow Load Time: ${Math.round(d.slow)} ms</div>
+                    <div style="font-weight: 600; color: #c82333;">Slow Load Time: ${Math.round(d.slow)} ms</div>
                     <div style="font-size: 11px; color: #ccc; margin-top: 2px;">90th percentile of ${d.count} recorded loads (slowest 10%)</div>
                 </div>
                 <div style="border-top: 1px solid #666; padding-top: 4px; margin-top: 4px; font-size: 11px;">
@@ -283,21 +293,21 @@ function drawPageComparisonChart(dataByPath, getP) {
         .on("mousemove", (event) => {
             tooltip.style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 28) + "px");
         })
-        .on("mouseout", function() { d3.select(this).attr("opacity", 0.8); tooltip.style("opacity", 0); });
+        .on("mouseout", function() { d3.select(this).attr("opacity", 0.85); tooltip.style("opacity", 0); });
 
     // Value labels
     barG.append("text")
-        .attr("x", d => x(d.typical) + 5).attr("y", y.bandwidth() / 4 + 3)
+        .attr("x", d => x(d.typical) + 5).attr("y", d => y.bandwidth() * 0.225 + 3)
         .attr("font-size", "11px").attr("fill", "#333").text(d => Math.round(d.typical) + " ms");
 
     barG.append("text")
-        .attr("x", d => x(d.slow) + 5).attr("y", y.bandwidth() / 2 + 12)
+        .attr("x", d => x(d.slow) + 5).attr("y", d => y.bandwidth() * 0.775 + 3)
         .attr("font-size", "11px").attr("fill", "#333").text(d => Math.round(d.slow) + " ms");
 
     // Legend
-    svg.append("circle").attr("cx", innerW - 160).attr("cy", -35).attr("r", 4).attr("fill", "#007bff");
+    svg.append("circle").attr("cx", innerW - 160).attr("cy", -35).attr("r", 4).attr("fill", "#0056b3");
     svg.append("text").attr("x", innerW - 150).attr("y", -31).attr("font-size", "11px").text("Typical (Median)");
-    svg.append("circle").attr("cx", innerW - 160).attr("cy", -18).attr("r", 4).attr("fill", "#dc3545");
+    svg.append("circle").attr("cx", innerW - 160).attr("cy", -18).attr("r", 4).attr("fill", "#c82333");
     svg.append("text").attr("x", innerW - 150).attr("y", -14).attr("font-size", "11px").text("Slow (90th %)");
 
     svg.append("g").attr("transform", `translate(0,${innerH})`).call(d3.axisBottom(x).ticks(4).tickFormat(d => d + " ms"));
@@ -323,13 +333,13 @@ function drawSlowLoadRateChart(dataByPath, threshold) {
 
     if (volumeData.length === 0) return;
 
-    const width = container.node().getBoundingClientRect().width || 500;
-    const height = 250 + volumeData.length * 20;
+    const width = Math.max(container.node().getBoundingClientRect().width || 500, 500);
+    const height = 200 + volumeData.length * 28;
     const margin = { top: 50, right: 30, bottom: 40, left: 120 };
     const innerW = width - margin.left - margin.right;
     const innerH = height - margin.top - margin.bottom;
 
-    const svg = container.append("svg").attr("width", width).attr("height", height)
+    const svg = container.append("svg").attr("width", width).attr("height", height).style("max-width", "100%")
         .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
     container.insert("div", ":first-child").attr("class", "chart-title").text("Observed Page Loads by Page");
