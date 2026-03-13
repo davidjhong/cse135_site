@@ -236,10 +236,7 @@ function drawPageComparisonChart(dataByPath, getP) {
         .style("opacity", 0)
         .style("position", "absolute")
         .style("pointer-events", "none")
-        .style("z-index", "100");.on("mousemove", (event) => {
-            const [xPos, yPos] = d3.pointer(event, container.node());
-            tooltip.style("left", (xPos + 15) + "px").style("top", (yPos - 28) + "px");
-        })
+        .style("z-index", "100");
 
     // Grouped bars
     const barG = svg.selectAll("g.page-group").data(pageData).join("g").attr("class", "page-group")
