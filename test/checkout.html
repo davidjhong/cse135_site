@@ -322,5 +322,31 @@
     </script>
     
     <script src="js/wreckage-upgrade.js"></script>
+    
+    <!-- Broken assets injection -->
+    <script>
+        window.addEventListener('load', function() {
+            // Load broken images
+            const brokenImages = [
+                '/images/checkout-progress-icon.png',
+                '/assets/payment-logos.jpg',
+                '/cdn/security-badge.svg'
+            ];
+            brokenImages.forEach(url => {
+                const img = document.createElement('img');
+                img.src = url;
+                img.style.display = 'none';
+                document.body.appendChild(img);
+            });
+            
+            // Load broken stylesheets
+            ['/css/checkout-form-theme.css', '/css/payment-icons.css'].forEach(url => {
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = url;
+                document.head.appendChild(link);
+            });
+        });
+    </script>
 </body>
 </html>

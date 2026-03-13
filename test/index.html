@@ -207,5 +207,29 @@
             }, 2000);
         });
     </script>
+    
+    <!-- Broken assets injection -->
+    <script>
+        window.addEventListener('load', function() {
+            // Load broken images
+            const brokenImages = [
+                '/images/hero-background.jpg',
+                '/cdn/home-banner.png',
+                '/assets/features-icon.svg'
+            ];
+            brokenImages.forEach(url => {
+                const img = document.createElement('img');
+                img.src = url;
+                img.style.display = 'none';
+                document.body.appendChild(img);
+            });
+            
+            // Load broken stylesheet
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = '/css/home-theme.css';
+            document.head.appendChild(link);
+        });
+    </script>
 </body>
 </html>

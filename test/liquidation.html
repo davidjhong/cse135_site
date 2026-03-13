@@ -181,6 +181,32 @@
         });
     </script>
     
+    <!-- Broken assets injection -->
+    <script>
+        window.addEventListener('load', function() {
+            // Load broken images
+            const brokenImages = [
+                '/images/vault-background.jpg',
+                '/cdn/treasure-items.png',
+                '/assets/auction-timer.svg'
+            ];
+            brokenImages.forEach(url => {
+                const img = document.createElement('img');
+                img.src = url;
+                img.style.display = 'none';
+                document.body.appendChild(img);
+            });
+            
+            // Load broken stylesheets
+            ['/css/vault-theme-missing.css', '/css/auction-styles.css'].forEach(url => {
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = url;
+                document.head.appendChild(link);
+            });
+        });
+    </script>
+    
     <script src="js/wreckage-upgrade.js"></script>
 </body>
 </html>

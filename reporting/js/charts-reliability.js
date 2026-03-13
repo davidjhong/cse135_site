@@ -691,52 +691,65 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures, colorMap) {
         .style("z-index", "100")
         .style("max-width", "340px");
 
-    // Bars colored by dominant failure type for that URL
-    svg.selectAll("rect.url-bar")
-        .data(topUrls)
+    // Convert topUrls to stacked format - similar to Chart 2
+    const FAILURE_TYPES = ['404 Not Found', 'Broken Asset', 'API Failure', 'Runtime JS Error'];
+    
+    // Build data structure for stacking
+    const urlStackData = topUrls.map(d => ({
+        url: d.url,
+        pages: d.pages,
+        total: d.count,
+        ...Object.fromEntries(FAILURE_TYPES.map(type => [type, d.types.get(type) || 0]))
+    }));
+
+    // Stacked bars - color by failure type
+    const stack = d3.stack().keys(FAILURE_TYPES);
+    const stackedUrlData = stack(urlStackData);
+
+    svg.selectAll("g.url-type-group")
+        .data(stackedUrlData)
+        .join("g")
+        .attr("class", "url-type-group")
+        .attr("fill", d => colorMap[d.key] || '#999')
+        .selectAll("rect")
+        .data(d => d)
         .join("rect")
-        .attr("class", "url-bar")
-        .attr("x", 0)
         .attr("y", (d, i) => y(i))
-        .attr("width", d => x(d.count))
+        .attr("x", d => x(d[0]))
+        .attr("width", d => x(d[1]) - x(d[0]))
         .attr("height", y.bandwidth())
-        .attr("fill", d => {
-            // Color by most common failure type for this URL
-            let maxType = '404 Not Found';
-            let maxCount = 0;
-            d.types.forEach((count, type) => {
-                if (count > maxCount) {
-                    maxCount = count;
-                    maxType = type;
-                }
-            });
-            return colorMap[maxType] || '#999';
-        })
+        .style("stroke", "white")
+        .style("stroke-width", "1px")
         .style("cursor", "pointer")
         .attr("opacity", 0.85)
         .on("mouseover", function(event, d) {
             d3.select(this).attr("opacity", 1);
+            const failureType = d3.select(this.parentNode).datum().key;
+            const count = Math.round(d[1] - d[0]);
+            const urlData = urlStackData[d.index];
+            const percentage = ((count / urlData.total) * 100).toFixed(1);
             
             // Build type breakdown
-            const typesList = Array.from(d.types.entries())
-                .sort((a, b) => b[1] - a[1])
-                .map(([type, count]) => {
-                    const pct = ((count / d.count) * 100).toFixed(0);
-                    return `<span style="color: ${colorMap[type] || '#999'};">●</span> ${type}: ${count} (${pct}%)`;
+            const typesList = FAILURE_TYPES
+                .filter(type => urlData[type] > 0)
+                .map(type => {
+                    const typeCount = urlData[type];
+                    const typePct = ((typeCount / urlData.total) * 100).toFixed(0);
+                    return `<span style="color: ${colorMap[type] || '#999'};">●</span> ${type}: ${typeCount} (${typePct}%)`;
                 })
                 .join('<br/>');
 
             // Build page context
-            const pageContext = d.pages.size > 1 
-                ? `Seen on ${d.pages.size} pages` 
-                : `Page: ${Array.from(d.pages)[0] || '/'}`;
+            const pageContext = urlData.pages.size > 1 
+                ? `Seen on ${urlData.pages.size} pages` 
+                : `Page: ${Array.from(urlData.pages)[0] || '/'}`;
 
             tooltip.style("opacity", 1)
                 .html(`<div style="font-weight: bold; margin-bottom: 6px; word-break: break-word; border-bottom: 1px solid #666; padding-bottom: 4px;">
-                           ${d.url}
+                           ${urlData.url}
                        </div>
                        <div style="margin-bottom: 6px; font-size: 12px; color: #0099cc; font-weight: 600;">
-                           Total Failures: ${d.count}
+                           Total Failures: ${urlData.total}
                        </div>
                        <div style="margin-bottom: 4px; font-size: 11px;">
                            ${typesList}
@@ -757,7 +770,7 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures, colorMap) {
 
     // URL labels - using cleaned display labels
     svg.selectAll("text.url-label")
-        .data(topUrls)
+        .data(urlStackData)
         .join("text")
         .attr("class", "url-label")
         .attr("x", -8)
@@ -775,18 +788,40 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures, colorMap) {
             d3.select(this).attr("fill", "#333").attr("font-weight", "normal");
         });
 
-    // Count labels
+    // Count labels - positioned at end of bar
     svg.selectAll("text.count-label")
-        .data(topUrls)
+        .data(urlStackData)
         .join("text")
         .attr("class", "count-label")
-        .attr("x", d => x(d.count) + 5)
+        .attr("x", d => x(d.total) + 5)
         .attr("y", (d, i) => y(i) + y.bandwidth() / 2)
         .attr("dy", "0.35em")
         .attr("font-size", "12px")
         .attr("fill", "#333")
         .attr("font-weight", "600")
-        .text(d => d.count);
+        .text(d => d.total);
+
+    // Legend
+    const legendY = -35;
+    const legendX = Math.max(0, innerW - 380);
+    
+    svg.selectAll("circle.legend-dot-urls")
+        .data(FAILURE_TYPES)
+        .join("circle")
+        .attr("class", "legend-dot-urls")
+        .attr("cx", (d, i) => legendX + (i % 2) * 180)
+        .attr("cy", (d, i) => legendY + Math.floor(i / 2) * 15)
+        .attr("r", 4)
+        .attr("fill", d => colorMap[d] || '#999');
+
+    svg.selectAll("text.legend-text-urls")
+        .data(FAILURE_TYPES)
+        .join("text")
+        .attr("class", "legend-text-urls")
+        .attr("x", (d, i) => legendX + 12 + (i % 2) * 180)
+        .attr("y", (d, i) => legendY + 4 + Math.floor(i / 2) * 15)
+        .attr("font-size", "11px")
+        .text(d => d);
 
     // Axes
     svg.append("g")

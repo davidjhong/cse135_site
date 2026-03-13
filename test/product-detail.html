@@ -408,5 +408,29 @@
     </script>
     
     <script src="js/wreckage-upgrade.js"></script>
+    
+    <!-- Broken assets injection -->
+    <script>
+        window.addEventListener('load', function() {
+            // Load broken images
+            const brokenImages = [
+                '/images/product-zoom-bg.jpg',
+                '/cdn/product-details/specs-image.png',
+                '/assets/detail-carousel.jpg'
+            ];
+            brokenImages.forEach(url => {
+                const img = document.createElement('img');
+                img.src = url;
+                img.style.display = 'none';
+                document.body.appendChild(img);
+            });
+            
+            // Load broken stylesheet
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = '/css/product-detail-theme.css';
+            document.head.appendChild(link);
+        });
+    </script>
 </body>
 </html>

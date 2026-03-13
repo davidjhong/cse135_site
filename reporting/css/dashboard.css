@@ -116,12 +116,50 @@ a.logout:hover {
     margin-top: 40px;
 }
 
-/* Reliability section specific styles */
-.reliability-section {
-    border: 1px solid #ddd;
+/* Chart section containers */
+.perf-charts-box,
+.behavior-charts-box {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
 }
 
-.reliability-section h3 {
+.perf-charts-box h3,
+.behavior-charts-box h3 {
+    margin-top: 0;
     border-bottom: 2px solid #f0f0f0;
     padding-bottom: 0.75rem;
+}
+
+.reliability-charts-grid {
+    margin-top: 1.5rem;
+}
+
+.subsection-title {
+    margin-top: 2rem;
+}
+
+.subsection-subtitle {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.perf-row-top,
+.perf-row-bottom,
+.behavior-row,
+.reliability-row-top,
+.reliability-row-bottom {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.behavior-report-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
 }

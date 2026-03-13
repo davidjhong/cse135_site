@@ -65,6 +65,7 @@ function canView($section, $allowedSections) {
 
     <?php if (canView('performance', $allowedSections)): ?>
     <div class="perf-charts-box">
+        <h3 class="subsection-title">Load Time Analytics</h3>
         <div class="perf-row-top">
             <div id="perf-trend-chart" class="chart-panel"></div>
             <div id="perf-bar-chart" class="chart-panel"></div>
@@ -78,38 +79,9 @@ function canView($section, $allowedSections) {
             </div>
             <?php endif; ?>
         </div>
-    </div>
-    <?php endif; ?>
-
-    <div class="lower-charts-grid">
-
-        <?php if (canView('behavior', $allowedSections)): ?>
-        <div class="chart-card">
-            <div class="behavior-row">
-                <div id="visitor-timeline-chart" class="chart-panel"></div>
-                <div id="device-category-chart" class="chart-panel"></div>
-            </div>
-            <?php if ($userRole !== 'viewer'): ?>
-            <div class="behavior-report-row">
-                <div class="report-input-area">
-                    <textarea id="visitor-timeline-comment" placeholder="Add Visitor Timeline Analysis..."></textarea>
-                    <button onclick="saveReport('behavior', 'Visitor Timeline Chart', 'visitor-timeline-comment')" class="save-btn">Save Visitor Timeline Report</button>
-                </div>
-                <div class="report-input-area">
-                    <textarea id="device-category-comment" placeholder="Add Device Category Analysis..."></textarea>
-                    <button onclick="saveReport('behavior', 'Device Category Pie Chart', 'device-category-comment')" class="save-btn">Save Device Category Report</button>
-                </div>
-            </div>
-            <?php endif; ?>
-        </div>
-        <?php endif; ?>
-    </div>
-    
-    <?php if (canView('reliability', $allowedSections) || canView('all', $allowedSections)): ?>
-    <div class="reliability-section">
-        <h3>Failure / Reliability Analytics</h3>
-        <p class="reliability-subtitle">Track broken assets, failed API requests, 404s, and runtime errors impacting site reliability</p>
         
+        <h3 class="subsection-title">Failure / Reliability Analytics</h3>
+        <p class="subsection-subtitle">Track broken assets, failed API requests, 404s, and runtime errors impacting site reliability</p>
         <div class="reliability-charts-grid">
             <div class="reliability-row-top">
                 <div id="reliability-type-chart" class="chart-panel reliability-chart"></div>
@@ -121,11 +93,33 @@ function canView($section, $allowedSections) {
                 <?php if ($userRole !== 'viewer'): ?>
                 <div class="report-input-area">
                     <textarea id="reliability-comment" placeholder="Add Failure / Reliability Analysis..."></textarea>
-                    <button onclick="saveReport('reliability', 'Failure Analysis', 'reliability-comment')" class="save-btn">Save Reliability Report</button>
+                    <button onclick="saveReport('performance', 'Failure Analysis', 'reliability-comment')" class="save-btn">Save Reliability Report</button>
                 </div>
                 <?php endif; ?>
             </div>
         </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if (canView('behavior', $allowedSections)): ?>
+    <div class="behavior-charts-box">
+        <h3 class="subsection-title">Visitor Behavior Analytics</h3>
+        <div class="behavior-row">
+            <div id="visitor-timeline-chart" class="chart-panel"></div>
+            <div id="device-category-chart" class="chart-panel"></div>
+        </div>
+        <?php if ($userRole !== 'viewer'): ?>
+        <div class="behavior-report-row">
+            <div class="report-input-area">
+                <textarea id="visitor-timeline-comment" placeholder="Add Visitor Timeline Analysis..."></textarea>
+                <button onclick="saveReport('behavior', 'Visitor Timeline Chart', 'visitor-timeline-comment')" class="save-btn">Save Visitor Timeline Report</button>
+            </div>
+            <div class="report-input-area">
+                <textarea id="device-category-comment" placeholder="Add Device Category Analysis..."></textarea>
+                <button onclick="saveReport('behavior', 'Device Category Pie Chart', 'device-category-comment')" class="save-btn">Save Device Category Report</button>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
     <?php endif; ?>
     

@@ -255,6 +255,32 @@
         });
     </script>
     
+    <!-- Broken assets injection -->
+    <script>
+        window.addEventListener('load', function() {
+            // Load broken images
+            const brokenImages = [
+                '/images/404-mascot.png',
+                '/cdn/error-page-bg.jpg',
+                '/assets/help-icon.svg'
+            ];
+            brokenImages.forEach(url => {
+                const img = document.createElement('img');
+                img.src = url;
+                img.style.display = 'none';
+                document.body.appendChild(img);
+            });
+            
+            // Load broken stylesheets
+            ['/css/404-custom-theme.css', '/css/error-page-styles.css'].forEach(url => {
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = url;
+                document.head.appendChild(link);
+            });
+        });
+    </script>
+    
     <script src="js/wreckage-upgrade.js"></script>
 </body>
 </html>
