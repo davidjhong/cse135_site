@@ -10,13 +10,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo = new PDO("mysql:host=localhost;dbname=analytics_db;charset=utf8mb4", "analytics_user", "SuperSecurePass123!");
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        $stmt = $pdo->prepare("SELECT * FROM admin_users WHERE username = ?");
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
         $stmt->execute([$username]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($user && $password === $user['password']) {
+        if ($user && password_verify($password, $user['password_hash'])) {
             $_SESSION['logged_in'] = true;
             $_SESSION['username'] = $user['username'];
+            
+            // Store RBAC rules in the session
+            $_SESSION['role'] = $user['role'];
+            $_SESSION['allowed_sections'] = json_decode($user['allowed_sections'], true);
+            
             header("Location: dashboard.php");
             exit();
         } else {
