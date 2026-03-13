@@ -100,8 +100,8 @@ function drawTrendChart(dataByDate, getP) {
     const svg = container.append("svg").attr("width", width).attr("height", height)
         .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-    container.insert("div", ":first-child").attr("class", "chart-title").text("Site Performance Over Time");
-    container.insert("p", "div + div").attr("class", "chart-subtitle").html("Typical vs Slow Load Time with Performance Zones");
+    container.insert("div", ":first-child").attr("class", "chart-title").text("Overall Load Experience by Day");
+    container.insert("p", "div + div").attr("class", "chart-subtitle").html("Sitewide aggregate across all recorded page-load events");
 
     const x = d3.scaleTime().domain(d3.extent(trendData, d => d.date)).range([0, innerW]);
     const yMax = d3.max(trendData, d => d.p90) * 1.15;
@@ -172,9 +172,18 @@ function drawTrendChart(dataByDate, getP) {
             const slowStatus = getPerformanceStatus(Math.round(d.p90));
 
             tooltip.html(`
-                <div style="font-weight: bold; margin-bottom: 4px;">${dateStr}</div>
-                <div style="margin-bottom: 2px;">Typical Load Time: <strong>${Math.round(d.p50)} ms</strong><span style="font-size: 11px; color: #666;"> (${typicalStatus.label})</span></div>
-                <div>Slow Load Time: <strong>${Math.round(d.p90)} ms</strong><span style="font-size: 11px; color: #666;"> (${slowStatus.label})</span></div>
+                <div style="font-weight: bold; margin-bottom: 6px;">${dateStr}</div>
+                <div style="margin-bottom: 4px;">
+                    <div style="font-weight: 600; color: #007bff;">Typical Load Time: ${Math.round(d.p50)} ms</div>
+                    <div style="font-size: 11px; color: #ccc; margin-top: 2px;">Median of all recorded page loads</div>
+                </div>
+                <div style="margin-bottom: 4px;">
+                    <div style="font-weight: 600; color: #dc3545;">Slow Load Time: ${Math.round(d.p90)} ms</div>
+                    <div style="font-size: 11px; color: #ccc; margin-top: 2px;">90th percentile of all recorded page loads</div>
+                </div>
+                <div style="border-top: 1px solid #666; padding-top: 4px; margin-top: 6px; font-size: 11px; color: #aaa;">
+                    Status: <span style="color: ${typicalStatus.color};">${typicalStatus.label}</span> → <span style="color: ${slowStatus.color};">${slowStatus.label}</span>
+                </div>
             `);
 
             let tipX = cx + margin.left + 15;
@@ -230,10 +239,19 @@ function drawPageComparisonChart(dataByPath, getP) {
         .style("cursor", "pointer")
         .on("mouseover", function(event, d) {
             d3.select(this).attr("opacity", 1);
+            const variance = d.slow - d.typical;
+            const interpretation = variance > 1500 ? "High variance: some loads much slower than typical." : 
+                                   variance > 800 ? "Moderate variance: occasional slow loads." : 
+                                   "Low variance: consistent performance.";
             tooltip.style("opacity", 1).html(`
-                <div style="font-weight: bold; margin-bottom: 4px;">${d.path}</div>
-                <div>Typical Load Time: <strong>${Math.round(d.typical)} ms</strong></div>
-                <div style="font-size: 11px; color: #666;">Based on ${d.count} page loads</div>
+                <div style="font-weight: bold; margin-bottom: 6px;">${d.path}</div>
+                <div style="margin-bottom: 4px;">
+                    <div style="font-weight: 600; color: #007bff;">Typical Load Time: ${Math.round(d.typical)} ms</div>
+                    <div style="font-size: 11px; color: #ccc; margin-top: 2px;">Median of ${d.count} recorded loads</div>
+                </div>
+                <div style="border-top: 1px solid #666; padding-top: 4px; margin-top: 4px; font-size: 11px; color: #aaa;">
+                    ${interpretation}
+                </div>
             `);
         })
         .on("mousemove", (event) => {
@@ -249,10 +267,17 @@ function drawPageComparisonChart(dataByPath, getP) {
         .style("cursor", "pointer")
         .on("mouseover", function(event, d) {
             d3.select(this).attr("opacity", 1);
+            const slowStatus = getPerformanceStatus(Math.round(d.slow));
             tooltip.style("opacity", 1).html(`
-                <div style="font-weight: bold; margin-bottom: 4px;">${d.path}</div>
-                <div>Slow Load Time: <strong>${Math.round(d.slow)} ms</strong> (slowest 10% of loads)</div>
-                <div style="font-size: 11px; color: #666;">Based on ${d.count} page loads</div>
+                <div style="font-weight: bold; margin-bottom: 6px;">${d.path}</div>
+                <div style="margin-bottom: 4px;">
+                    <div style="font-weight: 600; color: #dc3545;">Slow Load Time: ${Math.round(d.slow)} ms</div>
+                    <div style="font-size: 11px; color: #ccc; margin-top: 2px;">90th percentile of ${d.count} recorded loads (slowest 10%)</div>
+                </div>
+                <div style="border-top: 1px solid #666; padding-top: 4px; margin-top: 4px; font-size: 11px;">
+                    <span style="color: ${slowStatus.color}; font-weight: 600;">Status: ${slowStatus.label}</span>
+                    <div style="color: #aaa; margin-top: 3px;">${d.slow > 1500 ? "Users may experience frustration on slow loads." : "Most users should not notice slowness."}</div>
+                </div>
             `);
         })
         .on("mousemove", (event) => {
@@ -280,24 +305,26 @@ function drawPageComparisonChart(dataByPath, getP) {
 }
 
 // ==========================================
-// Chart 3: Slow Load Rate
+// Chart 3: Traffic Volume / Measurement Count
 // ==========================================
 function drawSlowLoadRateChart(dataByPath, threshold) {
     const container = d3.select("#perf-box-plot");
     container.html("");
 
-    const slowRateData = Array.from(dataByPath.entries())
-        .map(([path, times]) => {
-            const slowCount = times.filter(t => t > threshold).length;
-            const slowPercent = (slowCount / times.length) * 100;
-            return { path, slowCount, totalCount: times.length, slowPercent };
-        })
-        .sort((a, b) => b.slowPercent - a.slowPercent);
+    const totalLoadCount = Array.from(dataByPath.values()).reduce((sum, arr) => sum + arr.length, 0);
 
-    if (slowRateData.length === 0) return;
+    const volumeData = Array.from(dataByPath.entries())
+        .map(([path, times]) => {
+            const count = times.length;
+            const percent = (count / totalLoadCount) * 100;
+            return { path, count, percent };
+        })
+        .sort((a, b) => b.count - a.count);
+
+    if (volumeData.length === 0) return;
 
     const width = container.node().getBoundingClientRect().width || 500;
-    const height = 250 + slowRateData.length * 20;
+    const height = 250 + volumeData.length * 20;
     const margin = { top: 50, right: 30, bottom: 40, left: 120 };
     const innerW = width - margin.left - margin.right;
     const innerH = height - margin.top - margin.bottom;
@@ -305,31 +332,34 @@ function drawSlowLoadRateChart(dataByPath, threshold) {
     const svg = container.append("svg").attr("width", width).attr("height", height)
         .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-    container.insert("div", ":first-child").attr("class", "chart-title").text(`Slow Load Rate by Page (> ${threshold} ms)`);
-    container.insert("p", "div + div").attr("class", "chart-subtitle").html("Percentage of page loads considered slow");
+    container.insert("div", ":first-child").attr("class", "chart-title").text("Observed Page Loads by Page");
+    container.insert("p", "div + div").attr("class", "chart-subtitle").html("Sample size supporting other metrics (total: " + totalLoadCount + " events)");
 
-    const x = d3.scaleLinear().domain([0, 100]).range([0, innerW]);
-    const y = d3.scaleBand().domain(slowRateData.map(d => d.path)).range([0, innerH]).padding(0.4);
+    const x = d3.scaleLinear().domain([0, d3.max(volumeData, d => d.count) * 1.05]).range([0, innerW]);
+    const y = d3.scaleBand().domain(volumeData.map(d => d.path)).range([0, innerH]).padding(0.4);
 
     const tooltip = container.append("div").attr("class", "chart-tooltip");
 
-    // Color bars by intensity
-    svg.selectAll("rect.slow-bar").data(slowRateData).join("rect").attr("class", "slow-bar")
+    // Bars colored by intensity (lighter blue for low volume, darker for high)
+    svg.selectAll("rect.volume-bar").data(volumeData).join("rect").attr("class", "volume-bar")
         .attr("x", 0).attr("y", d => y(d.path))
-        .attr("width", d => x(d.slowPercent)).attr("height", y.bandwidth())
+        .attr("width", d => x(d.count)).attr("height", y.bandwidth())
         .attr("fill", d => {
-            if (d.slowPercent < 10) return "#28a745";
-            if (d.slowPercent < 25) return "#ffc107";
-            if (d.slowPercent < 50) return "#fd7e14";
-            return "#dc3545";
+            const intensity = d.percent / d3.max(volumeData, x => x.percent);
+            return d3.interpolateBlues(0.4 + intensity * 0.5);
         })
         .style("cursor", "pointer")
         .on("mouseover", function(event, d) {
-            d3.select(this).style("opacity", 0.8);
+            d3.select(this).style("opacity", 0.9);
             tooltip.style("opacity", 1).html(`
-                <div style="font-weight: bold; margin-bottom: 4px;">${d.path}</div>
-                <div>Slow Load Rate: <strong>${d.slowPercent.toFixed(1)}%</strong></div>
-                <div style="font-size: 11px; color: #666;">${d.slowCount} of ${d.totalCount} loads were slow</div>
+                <div style="font-weight: bold; margin-bottom: 6px;">${d.path}</div>
+                <div style="margin-bottom: 4px;">
+                    <div style="font-weight: 600;">Recorded Load Events: ${d.count}</div>
+                    <div style="font-size: 11px; color: #ccc; margin-top: 2px;">${d.percent.toFixed(1)}% of all observations</div>
+                </div>
+                <div style="border-top: 1px solid #666; padding-top: 4px; margin-top: 6px; font-size: 11px; color: #aaa;">
+                    This sample size supports the load time metrics above.
+                </div>
             `);
         })
         .on("mousemove", (event) => {
@@ -337,13 +367,13 @@ function drawSlowLoadRateChart(dataByPath, threshold) {
         })
         .on("mouseout", function() { d3.select(this).style("opacity", 1); tooltip.style("opacity", 0); });
 
-    // Percentage labels
-    svg.selectAll("text.slow-label").data(slowRateData).join("text").attr("class", "slow-label")
-        .attr("x", d => x(d.slowPercent) + 5).attr("y", d => y(d.path) + y.bandwidth() / 2 + 4)
+    // Count labels
+    svg.selectAll("text.volume-label").data(volumeData).join("text").attr("class", "volume-label")
+        .attr("x", d => x(d.count) + 5).attr("y", d => y(d.path) + y.bandwidth() / 2 + 4)
         .attr("font-size", "12px").attr("font-weight", "bold").attr("fill", "#333")
-        .text(d => d.slowPercent.toFixed(1) + "%");
+        .text(d => d.count + " events");
 
-    svg.append("g").attr("transform", `translate(0,${innerH})`).call(d3.axisBottom(x).ticks(5).tickFormat(d => d + "%"));
+    svg.append("g").attr("transform", `translate(0,${innerH})`).call(d3.axisBottom(x).ticks(5).tickFormat(d3.format("d")));
     svg.append("g").call(d3.axisLeft(y).tickSizeOuter(0));
 }
 
