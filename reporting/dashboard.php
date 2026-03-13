@@ -41,7 +41,9 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
                 <tr><td colspan="5">Loading recent events...</td></tr>
             </tbody>
         </table>
-        <div id="table-controls" class="table-controls"></div>
+        <div id="table-controls" class="table-controls">
+            <button id="toggle-btn" class="table-toggle-btn" type="button" hidden></button>
+        </div>
     </div>
 
     <div class="charts-grid">

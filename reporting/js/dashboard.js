@@ -1,10 +1,28 @@
 document.addEventListener('DOMContentLoaded', () => {
     const tbody = document.getElementById('events-tbody');
     const controls = document.getElementById('table-controls');
+    const toggleButton = document.getElementById('toggle-btn');
     
     let allEvents = [];
     const INITIAL_LIMIT = 10;
+    const MAX_DISPLAY_EVENTS = 100;
     let isExpanded = false;
+
+    tbody.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        if (!target.classList.contains('view-raw-btn')) return;
+
+        const payload = target.dataset.rawPayload || 'No extra data';
+        alert(payload);
+    });
+
+    if (toggleButton) {
+        toggleButton.addEventListener('click', () => {
+            isExpanded = !isExpanded;
+            renderTable();
+        });
+    }
 
     fetch('/api/events')
         .then(response => {
@@ -26,19 +44,29 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .catch(error => {
             console.error('Error fetching data:', error);
-            tbody.innerHTML = `<tr><td colspan="6" class="error">Failed to load data: ${error.message}</td></tr>`;
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.colSpan = 6;
+            cell.className = 'error';
+            cell.textContent = `Failed to load data: ${error.message}`;
+            row.appendChild(cell);
+            tbody.replaceChildren(row);
+
+            if (toggleButton) {
+                toggleButton.hidden = true;
+            }
         });
 
     function renderTable() {
-        tbody.innerHTML = ''; 
+        tbody.replaceChildren();
         
-        const limit = isExpanded ? allEvents.length : Math.min(INITIAL_LIMIT, allEvents.length);
-        let html = '';
+        const displayEvents = allEvents.slice(0, MAX_DISPLAY_EVENTS);
+        const limit = isExpanded ? displayEvents.length : Math.min(INITIAL_LIMIT, displayEvents.length);
+        const fragment = document.createDocumentFragment();
 
         for (let i = 0; i < limit; i++) {
-            const event = allEvents[i];
+            const event = displayEvents[i];
             
-            // 1. Safely parse the raw_data JSON to grab the User ID
             let parsedRaw = {};
             if (event.raw_data) {
                 try {
@@ -48,42 +76,67 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // 2. Extract values with fallbacks for legacy/broken rows
             const userId = parsedRaw.user_id || event.session_id || 'Legacy/Unknown';
             const sessionId = event.session_id || 'unknown';
             const eventType = event.event_type || 'unknown';
-            
-            // Format raw data for the alert button
-            const rawDataStr = event.raw_data ? JSON.stringify(parsedRaw).replace(/'/g, "\\'").replace(/"/g, '&quot;') : 'No extra data';
 
-            html += `
-                <tr>
-                    <td>${event.id}</td>
-                    <td class="truncate" title="${userId}" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${userId}</td>
-                    <td class="truncate" title="${sessionId}" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${sessionId}</td>
-                    <td><span class="badge ${eventType}">${eventType}</span></td>
-                    <td>${event.created_at}</td>
-                    <td>
-                        <button onclick="alert('${rawDataStr}')" style="padding: 4px 8px; font-size: 0.8rem; cursor: pointer;">View</button>
-                    </td>
-                </tr>
-            `;
+            const rawDataText = event.raw_data ? JSON.stringify(parsedRaw, null, 2) : 'No extra data';
+
+            const row = document.createElement('tr');
+
+            const idCell = document.createElement('td');
+            idCell.textContent = String(event.id ?? '');
+
+            const userCell = document.createElement('td');
+            userCell.className = 'truncate';
+            userCell.title = String(userId);
+            userCell.textContent = String(userId);
+
+            const sessionCell = document.createElement('td');
+            sessionCell.className = 'truncate';
+            sessionCell.title = String(sessionId);
+            sessionCell.textContent = String(sessionId);
+
+            const eventTypeCell = document.createElement('td');
+            const badge = document.createElement('span');
+            badge.className = `badge ${eventType}`;
+            badge.textContent = eventType;
+            eventTypeCell.appendChild(badge);
+
+            const createdAtCell = document.createElement('td');
+            createdAtCell.textContent = String(event.created_at ?? '');
+
+            const payloadCell = document.createElement('td');
+            const viewButton = document.createElement('button');
+            viewButton.type = 'button';
+            viewButton.className = 'view-raw-btn';
+            viewButton.textContent = 'View';
+            viewButton.dataset.rawPayload = rawDataText;
+            payloadCell.appendChild(viewButton);
+
+            row.append(idCell, userCell, sessionCell, eventTypeCell, createdAtCell, payloadCell);
+            fragment.appendChild(row);
         }
-        
-        tbody.innerHTML = html;
+        tbody.appendChild(fragment);
 
-        if (allEvents.length > INITIAL_LIMIT) {
+        if (!toggleButton) return;
+
+        if (displayEvents.length > INITIAL_LIMIT) {
             if (isExpanded) {
-                controls.innerHTML = `<button id="toggle-btn" style="padding: 10px 20px; cursor: pointer; background: #6c757d; color: white; border: none; border-radius: 4px;">Collapse to ${INITIAL_LIMIT}</button>`;
+                toggleButton.textContent = `Collapse to ${INITIAL_LIMIT}`;
+                toggleButton.classList.remove('expand');
+                toggleButton.classList.add('collapse');
             } else {
-                const hiddenCount = allEvents.length - INITIAL_LIMIT;
-                controls.innerHTML = `<button id="toggle-btn" style="padding: 10px 20px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px;">View All Remaining (${hiddenCount})</button>`;
+                const hiddenCount = displayEvents.length - INITIAL_LIMIT;
+                toggleButton.textContent = `View Remaining (${hiddenCount})`;
+                toggleButton.classList.remove('collapse');
+                toggleButton.classList.add('expand');
             }
-
-            document.getElementById('toggle-btn').addEventListener('click', () => {
-                isExpanded = !isExpanded;
-                renderTable();
-            });
+            toggleButton.hidden = false;
+            controls.hidden = false;
+        } else {
+            toggleButton.hidden = true;
+            controls.hidden = true;
         }
     }
 });
