@@ -5,92 +5,56 @@ window.drawLoadTimeChart = function(events) {
     chartContainer.style("position", "relative");
 
     // 1. Data Parsing & Path Cleanup
-    const rawDailyStats = new Map();
-    const datesSet = new Set();
+    const flatData = [];
     const pathsSet = new Set();
 
     events.filter(d => d.event_type === 'page_load' && d.raw_data?.performance?.totalLoadTime).forEach(ev => {
         if (!ev.created_at) return;
         
-        const dateStr = ev.created_at.split(' ')[0];
-        const dateTime = new Date(dateStr + 'T00:00:00').getTime();
+        // Parse exact timestamp for true scatter plot accuracy
+        const dateTime = new Date(ev.created_at);
 
-        let pathName = 'unknown';
+        let pathName = 'Unknown';
         try {
             const urlObj = new URL(ev.raw_data.url);
-            pathName = urlObj.pathname;
+            let rawPath = urlObj.pathname;
             
-            // Clean up paths for the legend
-            if (pathName === '/' || pathName === '/index.html' || pathName === '/index.php') {
+            // Apply requested presentation names
+            if (rawPath === '/' || rawPath === '/index.html' || rawPath === '/index.php') {
                 pathName = 'Home';
+            } else if (rawPath.includes('checkout')) {
+                pathName = 'Checkout';
+            } else if (rawPath.includes('product-detail')) {
+                pathName = 'Product Detail';
+            } else if (rawPath.includes('products')) {
+                pathName = 'Product';
             } else {
-                pathName = pathName.replace(/^\//, ''); // Remove leading slash
+                pathName = rawPath.replace(/^\//, ''); // Fallback
             }
         } catch (e) {
             console.warn("Invalid URL in payload:", ev.raw_data.url);
         }
 
         const loadTime = ev.raw_data.performance.totalLoadTime;
-        const key = `${dateTime}|${pathName}`;
-
-        datesSet.add(dateTime);
         pathsSet.add(pathName);
 
-        if (!rawDailyStats.has(key)) {
-            rawDailyStats.set(key, { sum: 0, count: 0 });
-        }
-        
-        const stat = rawDailyStats.get(key);
-        stat.sum += loadTime;
-        stat.count++;
+        flatData.push({
+            date: dateTime,
+            path: pathName,
+            loadTime: loadTime
+        });
     });
 
-    const uniqueDates = Array.from(datesSet).sort((a, b) => a - b);
-    const uniquePaths = Array.from(pathsSet);
-
-    if (uniqueDates.length === 0) {
+    if (flatData.length === 0) {
         chartContainer.html('<p class="chart-empty-state">No performance data available.</p>');
         return;
     }
 
-    // 2. Data Imputation (Forward-Fill to prevent chopped lines)
-    const flatData = [];
-    const dataByDate = new Map();
-    uniqueDates.forEach(t => dataByDate.set(t, []));
+    const uniquePaths = Array.from(pathsSet);
 
-    uniquePaths.forEach(path => {
-        let lastKnownAvg = null;
-
-        // Find the first available value to backfill if the chart starts with missing data
-        for (let t of uniqueDates) {
-            const key = `${t}|${path}`;
-            if (rawDailyStats.has(key)) {
-                lastKnownAvg = Math.round(rawDailyStats.get(key).sum / rawDailyStats.get(key).count);
-                break;
-            }
-        }
-        if (lastKnownAvg === null) lastKnownAvg = 0;
-
-        // Generate data points for every single day to keep lines continuous
-        uniqueDates.forEach(t => {
-            const key = `${t}|${path}`;
-            let avg;
-            if (rawDailyStats.has(key)) {
-                avg = Math.round(rawDailyStats.get(key).sum / rawDailyStats.get(key).count);
-                lastKnownAvg = avg; // Update the carry-forward value
-            } else {
-                avg = lastKnownAvg; // Carry forward the previous day's average
-            }
-
-            const dataPoint = { date: new Date(t), path: path, avgLoadTime: avg };
-            flatData.push(dataPoint);
-            dataByDate.get(t).push(dataPoint);
-        });
-    });
-
-    // 3. Setup Dimensions (Increased top margin for Legend, decreased right margin)
+    // 2. Setup Dimensions
     const width = 560, height = 350;
-    const margin = {top: 90, right: 30, bottom: 30, left: 50}; 
+    const margin = {top: 90, right: 30, bottom: 40, left: 60}; 
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
@@ -98,104 +62,84 @@ window.drawLoadTimeChart = function(events) {
         .attr("width", width).attr("height", height)
         .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // Top Title
+    // Title
     chartContainer.insert("div", ":first-child")
         .attr("class", "chart-title")
-        .text("Average Page Load Time (ms)");
+        .text("Page Load Time Scatter Plot (ms)");
 
-    const tooltip = chartContainer.append("div").attr("class", "chart-tooltip");
+    const tooltip = chartContainer.append("div")
+        .attr("class", "chart-tooltip")
+        .style("opacity", 0)
+        .style("position", "absolute")
+        .style("pointer-events", "none");
 
-    // Scales & Colors
-    const x = d3.scaleTime().domain(d3.extent(uniqueDates, d => new Date(d))).range([0, innerWidth]);
-    const yMax = Math.max(d3.max(flatData, d => d.avgLoadTime) || 1000, 1000); 
+    // 3. Scales & Colors
+    // Ensure the domain covers the exact min and max timestamps
+    const xDomain = d3.extent(flatData, d => d.date);
+    // Add a tiny buffer to X so dots don't clip the Y-axis
+    const timeBuffer = (xDomain[1] - xDomain[0]) * 0.05 || 3600000; 
+    const x = d3.scaleTime().domain([new Date(xDomain[0].getTime() - timeBuffer), new Date(xDomain[1].getTime() + timeBuffer)]).range([0, innerWidth]);
+    
+    const yMax = Math.max(d3.max(flatData, d => d.loadTime) || 1000, 1000); 
     const y = d3.scaleLinear().domain([0, yMax * 1.1]).range([innerHeight, 0]);
     const color = d3.scaleOrdinal(d3.schemeCategory10).domain(uniquePaths);
 
-    // 4. Dynamic Legend Palette (Wraps if too many items)
+    // 4. Dynamic Legend Palette
     const legend = svg.append("g").attr("transform", `translate(0, -50)`);
-    let legendX = 0;
-    let legendY = 0;
+    let legendX = 0, legendY = 0;
 
     uniquePaths.forEach(path => {
-        const textWidth = path.length * 7 + 25; // Approximate pixel width of text
+        const textWidth = path.length * 7 + 25; 
         if (legendX + textWidth > innerWidth) {
             legendX = 0;
-            legendY += 15; // Drop to next line
+            legendY += 15; 
         }
         
         const legendItem = legend.append("g").attr("transform", `translate(${legendX}, ${legendY})`);
-        legendItem.append("rect").attr("width", 10).attr("height", 10).attr("fill", color(path));
+        legendItem.append("circle").attr("r", 5).attr("cx", 5).attr("cy", 5).attr("fill", color(path));
         legendItem.append("text").attr("x", 15).attr("y", 9).attr("font-size", "11px").text(path);
         
         legendX += textWidth + 10;
     });
 
-    // 5. Line Generator & Drawing
-    const nestedData = d3.group(flatData, d => d.path);
-    const lineGenerator = d3.line()
-        .x(d => x(d.date))
-        .y(d => y(d.avgLoadTime))
-        .curve(d3.curveMonotoneX);
-
-    nestedData.forEach((values, path) => {
-        svg.append("path")
-            .datum(values)
-            .attr("fill", "none")
-            .attr("stroke", color(path))
-            .attr("stroke-width", 2)
-            .attr("d", lineGenerator);
-    });
+    // 5. Draw Scatter Points
+    svg.selectAll("dot")
+        .data(flatData)
+        .join("circle")
+        .attr("cx", d => x(d.date))
+        .attr("cy", d => y(d.loadTime))
+        .attr("r", 5)
+        .attr("fill", d => color(d.path))
+        .attr("opacity", 0.7) // Semi-transparent to show clustering
+        .attr("stroke", "#fff")
+        .attr("stroke-width", 0.5)
+        .on("mouseover", function(event, d) {
+            d3.select(this).attr("r", 8).attr("opacity", 1).attr("stroke", "#333");
+            
+            const dateStr = d3.timeFormat("%b %d, %Y %I:%M:%S %p")(d.date);
+            tooltip.style("opacity", 1)
+                   .html(`<strong>${d.path}</strong><br>Time: ${dateStr}<br>Load: ${d.loadTime}ms`);
+        })
+        .on("mousemove", (event) => {
+            // Position tooltip relative to the mouse
+            let tipX = event.pageX + 15;
+            let tipY = event.pageY - 28;
+            tooltip.style("left", `${tipX}px`).style("top", `${tipY}px`);
+        })
+        .on("mouseout", function() {
+            d3.select(this).attr("r", 5).attr("opacity", 0.7).attr("stroke", "#fff");
+            tooltip.style("opacity", 0);
+        });
 
     // 6. Axes
     svg.append("g")
         .attr("transform", `translate(0,${innerHeight})`)
         .attr("class", "chart-axis")
-        .call(d3.axisBottom(x).ticks(5).tickFormat(d3.timeFormat("%b %d")));
+        .call(d3.axisBottom(x).ticks(5).tickFormat(d3.timeFormat("%b %d %H:%M")));
 
     svg.append("g")
         .attr("class", "chart-axis")
         .call(d3.axisLeft(y).ticks(6));
-
-    // 7. Interactive Exploratory Hover Line
-    const hoverLine = svg.append("line")
-        .attr("class", "hover-line")
-        .attr("y1", 0).attr("y2", innerHeight);
-
-    const bisectDate = d3.bisector(d => d).left;
-
-    svg.append("rect")
-        .attr("width", innerWidth).attr("height", innerHeight)
-        .attr("fill", "none").attr("pointer-events", "all")
-        .on("mouseover", () => { hoverLine.style("opacity", 1); tooltip.style("opacity", 1); })
-        .on("mouseout", () => { hoverLine.style("opacity", 0); tooltip.style("opacity", 0); })
-        .on("mousemove", (event) => {
-            const x0 = x.invert(d3.pointer(event)[0]).getTime();
-            
-            const i = bisectDate(uniqueDates, x0, 1);
-            const d0 = uniqueDates[i - 1];
-            const d1 = uniqueDates[i];
-            const closestTime = (d0 && d1) ? (x0 - d0 > d1 - x0 ? d1 : d0) : (d1 || d0);
-
-            if (!closestTime) return;
-
-            const cx = x(new Date(closestTime));
-            hoverLine.attr("x1", cx).attr("x2", cx);
-
-            const dateStr = d3.timeFormat("%Y/%m/%d")(new Date(closestTime));
-            const dayStats = dataByDate.get(closestTime);
-            
-            // Tooltip now shows data for ALL paths thanks to imputation
-            let tooltipHtml = `<div class="tooltip-header">${dateStr}</div>`;
-            dayStats.forEach(stat => {
-                tooltipHtml += `<span style="color:${color(stat.path)}">&#9679;</span> ${stat.path}: ${stat.avgLoadTime}ms<br>`;
-            });
-
-            tooltip.html(tooltipHtml);
-
-            let tipX = cx + margin.left + 15;
-            if (tipX + 150 > width) tipX = cx + margin.left - 160;
-            tooltip.style("left", `${tipX}px`).style("top", `${margin.top + 20}px`);
-        });
 };
 
 function drawErrorRateChart(events) {
