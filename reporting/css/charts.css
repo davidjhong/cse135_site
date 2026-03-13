@@ -66,6 +66,16 @@ svg {
     text-align: center;
     color: #6c757d;
     margin-bottom: 10px;
+    font-weight: 600;
+    font-size: 18px;
+}
+
+.chart-subtitle {
+    text-align: center;
+    color: #999;
+    font-size: 13px;
+    margin: 0 0 12px 0;
+    font-style: italic;
 }
 
 .chart-title-small {
@@ -191,6 +201,22 @@ svg {
 .legend-new { background: #3ea1f4; }
 
 .hover-line { stroke: #666; stroke-width: 1px; opacity: 0; pointer-events: none; }
+
+.perf-insight-panel {
+    background: #f0f7ff;
+    border-left: 4px solid #007bff;
+    padding: 12px 15px;
+    margin-top: 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #333;
+}
+
+.perf-insight-panel strong {
+    color: #0056b3;
+    font-weight: 600;
+}
 
 .pie-slice { stroke: white; stroke-width: 2px; }
 .pie-center-number { font-size: 36px; fill: #8fa2b4; }
