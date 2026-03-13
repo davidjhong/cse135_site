@@ -9,7 +9,7 @@
 
         let sid = crypto.randomUUID();
 
-        document.cookie = `_collector_sid=${sid}; path=/`;
+        document.cookie = `_collector_sid=${sid}; path=/; max-age=31536000; SameSite=Lax`;
 
         return sid;
     }
