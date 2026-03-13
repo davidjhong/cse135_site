@@ -2,7 +2,6 @@ window.drawPerformanceDashboard = function(events) {
     const rawData = [];
     const loadTimesByPath = new Map();
     const loadTimesByDate = new Map();
-    const SLOW_THRESHOLD = 3000; // ms - used for slow rate calculation
 
     // 1. Data Parsing & Cleanup
     events.filter(d => d.event_type === 'page_load' && d.raw_data?.performance?.totalLoadTime).forEach(ev => {
@@ -51,10 +50,7 @@ window.drawPerformanceDashboard = function(events) {
     // Execute drawing functions
     drawTrendChart(loadTimesByDate, getPercentile);
     drawPageComparisonChart(loadTimesByPath, getPercentile);
-    if (document.getElementById("perf-box-plot")) {
-        drawSlowLoadRateChart(loadTimesByPath, SLOW_THRESHOLD);
-    }
-    drawInsightPanel(loadTimesByPath, loadTimesByDate, getPercentile, SLOW_THRESHOLD);
+    drawTrafficVolumeChart(loadTimesByPath);
 };
 
 const PERF_BANDS = {
@@ -320,9 +316,9 @@ function drawPageComparisonChart(dataByPath, getP) {
 // ==========================================
 // Chart 3: Traffic Volume / Measurement Count
 // ==========================================
-function drawSlowLoadRateChart(dataByPath, threshold) {
+function drawTrafficVolumeChart(dataByPath) {
     const container = d3.select("#perf-box-plot");
-    container.html("");
+    container.html("").style("position", "relative");
 
     const totalLoadCount = Array.from(dataByPath.values()).reduce((sum, arr) => sum + arr.length, 0);
 
@@ -351,7 +347,12 @@ function drawSlowLoadRateChart(dataByPath, threshold) {
     const x = d3.scaleLinear().domain([0, d3.max(volumeData, d => d.count) * 1.05]).range([0, innerW]);
     const y = d3.scaleBand().domain(volumeData.map(d => d.path)).range([0, innerH]).padding(0.4);
 
-    const tooltip = container.append("div").attr("class", "chart-tooltip");
+    const tooltip = container.append("div")
+        .attr("class", "chart-tooltip")
+        .style("opacity", 0)
+        .style("position", "absolute")
+        .style("pointer-events", "none")
+        .style("z-index", "100");
 
     // Bars colored by intensity (lighter blue for low volume, darker for high)
     svg.selectAll("rect.volume-bar").data(volumeData).join("rect").attr("class", "volume-bar")
@@ -376,7 +377,8 @@ function drawSlowLoadRateChart(dataByPath, threshold) {
             `);
         })
         .on("mousemove", (event) => {
-            tooltip.style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 28) + "px");
+            const [xPos, yPos] = d3.pointer(event, container.node());
+            tooltip.style("left", (xPos + 15) + "px").style("top", (yPos - 28) + "px");
         })
         .on("mouseout", function() { d3.select(this).style("opacity", 1); tooltip.style("opacity", 0); });
 
@@ -388,50 +390,6 @@ function drawSlowLoadRateChart(dataByPath, threshold) {
 
     svg.append("g").attr("transform", `translate(0,${innerH})`).call(d3.axisBottom(x).ticks(5).tickFormat(d3.format("d")));
     svg.append("g").call(d3.axisLeft(y).tickSizeOuter(0));
-}
-
-// ==========================================
-// Insight Panel
-// ==========================================
-function drawInsightPanel(dataByPath, dataByDate, getP, slowThreshold) {
-    const container = d3.select("#perf-trend-chart").node().parentNode;
-    if (!container) return;
-
-    // Calculate summary metrics
-    const pages = Array.from(dataByPath.entries()).map(([path, times]) => ({
-        path,
-        typical: getP(times, 0.50),
-        slow: getP(times, 0.90),
-        count: times.length,
-        slowPercent: ((times.filter(t => t > slowThreshold).length / times.length) * 100)
-    }));
-
-    const worstPage = pages.reduce((a, b) => a.slow > b.slow ? a : b);
-    const bestPage = pages.reduce((a, b) => a.slow < b.slow ? a : b);
-    const allTimes = Array.from(dataByPath.values()).flat();
-    const siteTypical = getP(allTimes, 0.50);
-    const siteSlow = getP(allTimes, 0.90);
-
-    let insight = `<strong>Performance Summary:</strong> `;
-    
-    if (worstPage.slow > 3000) {
-        insight += `The <strong>${worstPage.path}</strong> page is the slowest, with slow loads averaging ${Math.round(worstPage.slow)} ms. `;
-    } else {
-        insight += `Overall site performance is in the Good range, with typical loads around ${Math.round(siteTypical)} ms. `;
-    }
-
-    if (worstPage.slowPercent > worstPage.count * 0.2) {
-        insight += `${worstPage.slowPercent.toFixed(0)}% of ${worstPage.path} loads exceed the 3-second threshold, indicating potential user frustration. `;
-    }
-
-    if (bestPage.slow < 1500) {
-        insight += `The <strong>${bestPage.path}</strong> page performs excellently with consistent response times.`;
-    }
-
-    const panelDiv = document.createElement('div');
-    panelDiv.className = 'perf-insight-panel';
-    panelDiv.innerHTML = insight;
-    container.appendChild(panelDiv);
 }
 
 function drawErrorRateChart(events) {
