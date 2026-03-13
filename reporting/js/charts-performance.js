@@ -1,54 +1,96 @@
-function drawLoadTimeChart(events) {
+window.drawLoadTimeChart = function(events) {
     const chartContainer = d3.select("#loadtime-chart");
     if (chartContainer.empty()) return;
     chartContainer.html("");
+    chartContainer.style("position", "relative");
 
-    // 1. Data Parsing & Aggregation
-    const dailyPathStats = new Map();
+    // 1. Data Parsing & Path Cleanup
+    const rawDailyStats = new Map();
+    const datesSet = new Set();
+    const pathsSet = new Set();
 
     events.filter(d => d.event_type === 'page_load' && d.raw_data?.performance?.totalLoadTime).forEach(ev => {
         if (!ev.created_at) return;
         
-        const dateKey = ev.created_at.split(' ')[0];
+        const dateStr = ev.created_at.split(' ')[0];
+        const dateTime = new Date(dateStr + 'T00:00:00').getTime();
+
         let pathName = 'unknown';
         try {
             const urlObj = new URL(ev.raw_data.url);
             pathName = urlObj.pathname;
-            if (pathName === '') pathName = '/';
+            
+            // Clean up paths for the legend
+            if (pathName === '/' || pathName === '/index.html' || pathName === '/index.php') {
+                pathName = 'Home';
+            } else {
+                pathName = pathName.replace(/^\//, ''); // Remove leading slash
+            }
         } catch (e) {
             console.warn("Invalid URL in payload:", ev.raw_data.url);
         }
 
         const loadTime = ev.raw_data.performance.totalLoadTime;
-        const compositeKey = `${dateKey}|${pathName}`;
+        const key = `${dateTime}|${pathName}`;
 
-        if (!dailyPathStats.has(compositeKey)) {
-            dailyPathStats.set(compositeKey, { date: new Date(dateKey + 'T00:00:00'), path: pathName, sum: 0, count: 0 });
+        datesSet.add(dateTime);
+        pathsSet.add(pathName);
+
+        if (!rawDailyStats.has(key)) {
+            rawDailyStats.set(key, { sum: 0, count: 0 });
         }
         
-        const stat = dailyPathStats.get(compositeKey);
+        const stat = rawDailyStats.get(key);
         stat.sum += loadTime;
         stat.count++;
     });
 
-    const flatData = Array.from(dailyPathStats.values()).map(d => ({
-        date: d.date,
-        path: d.path,
-        avgLoadTime: Math.round(d.sum / d.count)
-    })).sort((a, b) => a.date - b.date);
+    const uniqueDates = Array.from(datesSet).sort((a, b) => a - b);
+    const uniquePaths = Array.from(pathsSet);
 
-    if (flatData.length === 0) {
+    if (uniqueDates.length === 0) {
         chartContainer.html('<p class="chart-empty-state">No performance data available.</p>');
         return;
     }
 
-    // Group data by URL path for the multi-line drawing
-    const nestedData = d3.group(flatData, d => d.path);
-    const uniquePaths = Array.from(nestedData.keys());
+    // 2. Data Imputation (Forward-Fill to prevent chopped lines)
+    const flatData = [];
+    const dataByDate = new Map();
+    uniqueDates.forEach(t => dataByDate.set(t, []));
 
-    // 2. Setup Dimensions
+    uniquePaths.forEach(path => {
+        let lastKnownAvg = null;
+
+        // Find the first available value to backfill if the chart starts with missing data
+        for (let t of uniqueDates) {
+            const key = `${t}|${path}`;
+            if (rawDailyStats.has(key)) {
+                lastKnownAvg = Math.round(rawDailyStats.get(key).sum / rawDailyStats.get(key).count);
+                break;
+            }
+        }
+        if (lastKnownAvg === null) lastKnownAvg = 0;
+
+        // Generate data points for every single day to keep lines continuous
+        uniqueDates.forEach(t => {
+            const key = `${t}|${path}`;
+            let avg;
+            if (rawDailyStats.has(key)) {
+                avg = Math.round(rawDailyStats.get(key).sum / rawDailyStats.get(key).count);
+                lastKnownAvg = avg; // Update the carry-forward value
+            } else {
+                avg = lastKnownAvg; // Carry forward the previous day's average
+            }
+
+            const dataPoint = { date: new Date(t), path: path, avgLoadTime: avg };
+            flatData.push(dataPoint);
+            dataByDate.get(t).push(dataPoint);
+        });
+    });
+
+    // 3. Setup Dimensions (Increased top margin for Legend, decreased right margin)
     const width = 560, height = 350;
-    const margin = {top: 70, right: 120, bottom: 30, left: 50}; // Extra right margin for line labels
+    const margin = {top: 90, right: 30, bottom: 30, left: 50}; 
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
@@ -61,23 +103,40 @@ function drawLoadTimeChart(events) {
         .attr("class", "chart-title")
         .text("Average Page Load Time (ms)");
 
-    // Tooltip
-    const tooltip = chartContainer.append("div")
-        .attr("class", "chart-tooltip");
+    const tooltip = chartContainer.append("div").attr("class", "chart-tooltip");
 
-    // 3. Scales & Colors
-    const x = d3.scaleTime().domain(d3.extent(flatData, d => d.date)).range([0, innerWidth]);
-    const yMax = Math.max(d3.max(flatData, d => d.avgLoadTime) || 1000, 1000); // Base ceiling of 1s
+    // Scales & Colors
+    const x = d3.scaleTime().domain(d3.extent(uniqueDates, d => new Date(d))).range([0, innerWidth]);
+    const yMax = Math.max(d3.max(flatData, d => d.avgLoadTime) || 1000, 1000); 
     const y = d3.scaleLinear().domain([0, yMax * 1.1]).range([innerHeight, 0]);
     const color = d3.scaleOrdinal(d3.schemeCategory10).domain(uniquePaths);
 
-    // 4. Line Generator
+    // 4. Dynamic Legend Palette (Wraps if too many items)
+    const legend = svg.append("g").attr("transform", `translate(0, -50)`);
+    let legendX = 0;
+    let legendY = 0;
+
+    uniquePaths.forEach(path => {
+        const textWidth = path.length * 7 + 25; // Approximate pixel width of text
+        if (legendX + textWidth > innerWidth) {
+            legendX = 0;
+            legendY += 15; // Drop to next line
+        }
+        
+        const legendItem = legend.append("g").attr("transform", `translate(${legendX}, ${legendY})`);
+        legendItem.append("rect").attr("width", 10).attr("height", 10).attr("fill", color(path));
+        legendItem.append("text").attr("x", 15).attr("y", 9).attr("font-size", "11px").text(path);
+        
+        legendX += textWidth + 10;
+    });
+
+    // 5. Line Generator & Drawing
+    const nestedData = d3.group(flatData, d => d.path);
     const lineGenerator = d3.line()
         .x(d => x(d.date))
         .y(d => y(d.avgLoadTime))
         .curve(d3.curveMonotoneX);
 
-    // 5. Draw Lines and Labels
     nestedData.forEach((values, path) => {
         svg.append("path")
             .datum(values)
@@ -85,14 +144,6 @@ function drawLoadTimeChart(events) {
             .attr("stroke", color(path))
             .attr("stroke-width", 2)
             .attr("d", lineGenerator);
-
-        // Add path label at the end of the line
-        const lastPoint = values[values.length - 1];
-        svg.append("text")
-            .attr("transform", `translate(${x(lastPoint.date) + 5},${y(lastPoint.avgLoadTime) + 4})`)
-            .attr("font-size", "11px")
-            .attr("fill", color(path))
-            .text(path);
     });
 
     // 6. Axes
@@ -110,11 +161,7 @@ function drawLoadTimeChart(events) {
         .attr("class", "hover-line")
         .attr("y1", 0).attr("y2", innerHeight);
 
-    const bisectDate = d3.bisector(d => d.date).left;
-
-    // Group flat data by date for the tooltip
-    const dataByDate = d3.group(flatData, d => d.date.getTime());
-    const uniqueDates = Array.from(dataByDate.keys()).map(t => new Date(t)).sort((a, b) => a - b);
+    const bisectDate = d3.bisector(d => d).left;
 
     svg.append("rect")
         .attr("width", innerWidth).attr("height", innerHeight)
@@ -122,25 +169,22 @@ function drawLoadTimeChart(events) {
         .on("mouseover", () => { hoverLine.style("opacity", 1); tooltip.style("opacity", 1); })
         .on("mouseout", () => { hoverLine.style("opacity", 0); tooltip.style("opacity", 0); })
         .on("mousemove", (event) => {
-            const x0 = x.invert(d3.pointer(event)[0]);
+            const x0 = x.invert(d3.pointer(event)[0]).getTime();
             
-            // Find the closest date in our dataset
             const i = bisectDate(uniqueDates, x0, 1);
             const d0 = uniqueDates[i - 1];
             const d1 = uniqueDates[i];
-            let closestDate = d0;
-            if (d0 && d1) closestDate = x0 - d0 > d1 - x0 ? d1 : d0;
-            else closestDate = d1 || d0;
+            const closestTime = (d0 && d1) ? (x0 - d0 > d1 - x0 ? d1 : d0) : (d1 || d0);
 
-            if (!closestDate) return;
+            if (!closestTime) return;
 
-            const cx = x(closestDate);
+            const cx = x(new Date(closestTime));
             hoverLine.attr("x1", cx).attr("x2", cx);
 
-            // Build tooltip HTML dynamically based on paths loaded that day
-            const dateStr = d3.timeFormat("%Y/%m/%d")(closestDate);
-            const dayStats = dataByDate.get(closestDate.getTime());
+            const dateStr = d3.timeFormat("%Y/%m/%d")(new Date(closestTime));
+            const dayStats = dataByDate.get(closestTime);
             
+            // Tooltip now shows data for ALL paths thanks to imputation
             let tooltipHtml = `<div class="tooltip-header">${dateStr}</div>`;
             dayStats.forEach(stat => {
                 tooltipHtml += `<span style="color:${color(stat.path)}">&#9679;</span> ${stat.path}: ${stat.avgLoadTime}ms<br>`;
@@ -152,7 +196,7 @@ function drawLoadTimeChart(events) {
             if (tipX + 150 > width) tipX = cx + margin.left - 160;
             tooltip.style("left", `${tipX}px`).style("top", `${margin.top + 20}px`);
         });
-}
+};
 
 function drawErrorRateChart(events) {
     const chartContainer = d3.select("#error-rate-chart");
