@@ -172,35 +172,36 @@ function drawDeviceCategoryChart(events) {
 }
 
 function drawVisitorTimelineChart(events) {
-    const chartContainer = d3.select("#performance-chart"); // Reusing the first container
+    const chartContainer = d3.select("#performance-chart");
     chartContainer.html("");
     chartContainer.style("position", "relative");
 
-    // 1. Process data for Visitors vs New Visitors
+    // 1. Process data for Pageviews, Visitors, and New Visitors
     const dailyStats = new Map();
     const sessionFirstDate = new Map();
 
-    // Find the absolute first date for each session across ALL events to track "New" users
     events.forEach(ev => {
         if (!ev.created_at) return;
-        const dateKey = ev.created_at.split(' ')[0]; // Extract YYYY-MM-DD
+        const dateKey = ev.created_at.split(' ')[0];
         if (!sessionFirstDate.has(ev.session_id) || dateKey < sessionFirstDate.get(ev.session_id)) {
             sessionFirstDate.set(ev.session_id, dateKey);
         }
     });
 
-    // Aggregate daily visitors
     events.filter(d => d.event_type === 'page_load').forEach(ev => {
         if (!ev.created_at) return;
         const dateKey = ev.created_at.split(' ')[0];
         if (!dailyStats.has(dateKey)) {
-            // Force midnight so timezone offsets don't shift the day
-            dailyStats.set(dateKey, { date: new Date(dateKey + 'T00:00:00'), visitorsSet: new Set() });
+            dailyStats.set(dateKey, { 
+                date: new Date(dateKey + 'T00:00:00'), 
+                visitorsSet: new Set(),
+                pageviews: 0 
+            });
         }
         dailyStats.get(dateKey).visitorsSet.add(ev.session_id);
+        dailyStats.get(dateKey).pageviews++;
     });
 
-    // Build final data array comparing current date to first-seen date
     const data = Array.from(dailyStats.values()).map(stat => {
         let newVisCount = 0;
         const currentDateStr = stat.date.toISOString().split('T')[0];
@@ -213,16 +214,18 @@ function drawVisitorTimelineChart(events) {
 
         return {
             date: stat.date,
+            pageviews: stat.pageviews,
             visitors: stat.visitorsSet.size,
             newVisitors: newVisCount
         };
     }).sort((a, b) => a.date - b.date);
 
     if (data.length === 0) {
-        chartContainer.html('<p class="chart-empty-state-padded">No timeline data available.</p>');
+        chartContainer.html('<p class="chart-empty-state">No timeline data available.</p>');
         return;
     }
 
+    const totalViews = d3.sum(data, d => d.pageviews);
     const totalVis = d3.sum(data, d => d.visitors);
     const totalNew = d3.sum(data, d => d.newVisitors);
 
@@ -238,81 +241,72 @@ function drawVisitorTimelineChart(events) {
 
     // Top Title
     chartContainer.insert("div", ":first-child")
-        .attr("class", "chart-title chart-title-medium")
-        .text(`Visitors and New Visitors (${totalVis}/${totalNew})`);
+        .attr("class", "chart-title")
+        .text(`Traffic Overview (${totalViews} Views / ${totalVis} Vis / ${totalNew} New)`);
 
-    // Dynamic Legend Area (Matches the top left of your image)
+    // Dynamic Legend Area
     const legendDiv = chartContainer.append("div")
         .attr("class", "timeline-legend")
-        .style("left", `${margin.left}px`)
-        ;
+        .style("left", `${margin.left}px`);
 
     const updateLegend = (d) => {
         if (!d) return;
         const dateStr = d3.timeFormat("%d %b %Y")(d.date);
         legendDiv.html(`
-            <span class="timeline-legend-date">${dateStr}</span>
-            <span class="legend-item">
-                <span class="legend-color legend-color-visitors"></span> Visitors: ${d.visitors}
-            </span>
-            <span class="legend-item">
-                <span class="legend-color legend-color-new-visitors"></span> New Visitors: ${d.newVisitors}
-            </span>
+            <span class="legend-date">${dateStr}</span>
+            <span class="legend-item"><span class="legend-color legend-pv"></span> Pageviews: ${d.pageviews}</span>
+            <span class="legend-item"><span class="legend-color legend-vis"></span> Visitors: ${d.visitors}</span>
+            <span class="legend-item"><span class="legend-color legend-new"></span> New Visitors: ${d.newVisitors}</span>
         `);
     };
-    updateLegend(data[data.length - 1]); // Default to latest date
+    updateLegend(data[data.length - 1]);
 
-    // Tooltip Box
     const tooltip = chartContainer.append("div")
-        .attr("class", "chart-tooltip timeline-tooltip");
+        .attr("class", "chart-tooltip");
 
-    // 3. Scales
+    // 3. Scales (Y-axis now scales based on Pageviews, since it's the largest number)
     const x = d3.scaleTime().domain(d3.extent(data, d => d.date)).range([0, innerWidth]);
-    const yMax = Math.max(d3.max(data, d => d.visitors) || 5, 5); // Base ceiling
+    const yMax = Math.max(d3.max(data, d => d.pageviews) || 5, 5);
     const y = d3.scaleLinear().domain([0, yMax]).range([innerHeight, 0]);
 
     // 4. Area Generators
-    const areaVisitors = d3.area()
-        .x(d => x(d.date)).y0(innerHeight).y1(d => y(d.visitors)).curve(d3.curveMonotoneX);
+    const areaPageviews = d3.area().x(d => x(d.date)).y0(innerHeight).y1(d => y(d.pageviews)).curve(d3.curveMonotoneX);
+    const areaVisitors = d3.area().x(d => x(d.date)).y0(innerHeight).y1(d => y(d.visitors)).curve(d3.curveMonotoneX);
+    const areaNewVisitors = d3.area().x(d => x(d.date)).y0(innerHeight).y1(d => y(d.newVisitors)).curve(d3.curveMonotoneX);
 
-    const areaNewVisitors = d3.area()
-        .x(d => x(d.date)).y0(innerHeight).y1(d => y(d.newVisitors)).curve(d3.curveMonotoneX);
-
-    // Draw Total Visitors Area (Light Blue - Back)
+    // Draw Areas (Back to Front: Pageviews -> Visitors -> New Visitors)
     svg.append("path")
         .datum(data)
-        .attr("fill", "#9cd2ff")
-        .attr("stroke", "#7bb8f5")
-        .attr("stroke-width", 1.5)
-        .attr("d", areaVisitors)
-        .attr("opacity", 0.7);
+        .attr("class", "area-pageviews")
+        .attr("d", areaPageviews);
 
-    // Draw New Visitors Area (Dark Blue - Front)
     svg.append("path")
         .datum(data)
-        .attr("fill", "#3ea1f4")
-        .attr("stroke", "#2880c8")
-        .attr("stroke-width", 1.5)
-        .attr("d", areaNewVisitors)
-        .attr("opacity", 0.9);
+        .attr("class", "area-visitors")
+        .attr("d", areaVisitors);
+
+    svg.append("path")
+        .datum(data)
+        .attr("class", "area-new-visitors")
+        .attr("d", areaNewVisitors);
 
     // 5. Axes
     svg.append("g")
         .attr("transform", `translate(0,${innerHeight})`)
-        .call(d3.axisBottom(x).ticks(5).tickFormat(d3.timeFormat("%b %d")))
-        .attr("color", "#888");
+        .attr("class", "chart-axis")
+        .call(d3.axisBottom(x).ticks(5).tickFormat(d3.timeFormat("%b %d")));
 
-    svg.append("g").call(d3.axisLeft(y).ticks(5)).attr("color", "#888");
+    svg.append("g")
+        .attr("class", "chart-axis")
+        .call(d3.axisLeft(y).ticks(5));
 
     // 6. Interactive Hover Line
     const hoverLine = svg.append("line")
-        .attr("stroke", "#666").attr("stroke-width", 1)
-        .attr("y1", 0).attr("y2", innerHeight)
-        .style("opacity", 0);
+        .attr("class", "hover-line")
+        .attr("y1", 0).attr("y2", innerHeight);
 
     const bisectDate = d3.bisector(d => d.date).left;
 
-    // Invisible overlay to catch mouse events
     svg.append("rect")
         .attr("width", innerWidth).attr("height", innerHeight)
         .attr("fill", "none").attr("pointer-events", "all")
@@ -323,10 +317,9 @@ function drawVisitorTimelineChart(events) {
         .on("mouseout", () => {
             hoverLine.style("opacity", 0);
             tooltip.style("opacity", 0);
-            updateLegend(data[data.length - 1]); // Reset legend
+            updateLegend(data[data.length - 1]);
         })
         .on("mousemove", (event) => {
-            // Find closest data point
             const x0 = x.invert(d3.pointer(event)[0]);
             const i = bisectDate(data, x0, 1);
             const d0 = data[i - 1];
@@ -340,20 +333,18 @@ function drawVisitorTimelineChart(events) {
             const cx = x(d.date);
             hoverLine.attr("x1", cx).attr("x2", cx);
 
-            // Update Tooltip
             const dateStr = d3.timeFormat("%Y/%m/%d")(d.date);
             tooltip.html(`
-                <div class="chart-tooltip-heading">${dateStr}</div>
+                <div class="tooltip-header">${dateStr}</div>
+                Pageviews: ${d.pageviews}<br>
                 Visitors: ${d.visitors}<br>
                 New Visitors: ${d.newVisitors}
             `);
 
-            // Calculate Tooltip Position
             let tipX = cx + margin.left + 15;
-            if (tipX + 120 > width) tipX = cx + margin.left - 130; // Flip if near edge
-            tooltip.style("left", `${tipX}px`).style("top", `${margin.top + y(d.visitors) / 2}px`);
+            if (tipX + 120 > width) tipX = cx + margin.left - 130;
+            tooltip.style("left", `${tipX}px`).style("top", `${margin.top + y(d.pageviews) / 2}px`);
 
-            // Update Top Legend
             updateLegend(d);
         });
 }
