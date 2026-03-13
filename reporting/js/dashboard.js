@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     // 1. DATA FETCHING (Unconditional)
     // We fetch the data immediately so charts get what they need, regardless of table permissions.
-    fetch('/api/events')
+    fetch('https://reporting.davidjhong.site/api/events.php')
         .then(response => {
             if (!response.ok) throw new Error('Network response was not ok');
             return response.json();
