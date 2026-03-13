@@ -110,6 +110,7 @@ svg {
     padding: 10px 20px;
     cursor: pointer;
     color: white;
+    background: #007bff;
     border: none;
     border-radius: 4px;
 }
@@ -119,7 +120,7 @@ svg {
 }
 
 .table-toggle-btn.collapse {
-    background: #6c757d;
+    background: #007bff;
 }
 
 .view-raw-btn {

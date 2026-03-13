@@ -123,11 +123,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (displayEvents.length > INITIAL_LIMIT) {
                 if (isExpanded) {
                     toggleButton.textContent = `Collapse to ${INITIAL_LIMIT}`;
-                    toggleButton.classList.replace('expand', 'collapse');
+                    toggleButton.classList.remove('expand');
+                    toggleButton.classList.add('collapse');
                 } else {
                     const hiddenCount = displayEvents.length - INITIAL_LIMIT;
                     toggleButton.textContent = `View Remaining (${hiddenCount})`;
-                    toggleButton.classList.replace('collapse', 'expand');
+                    toggleButton.classList.remove('collapse');
+                    toggleButton.classList.add('expand');
                 }
                 toggleButton.hidden = false;
                 controls.hidden = false;
