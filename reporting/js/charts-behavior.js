@@ -1,21 +1,6 @@
-document.addEventListener('analyticsDataLoaded', (e) => {
-    const rawEvents = e.detail;
-
-    const events = rawEvents.map(ev => {
-        let parsedData = {};
-        if (ev.raw_data) {
-            try { parsedData = typeof ev.raw_data === 'string' ? JSON.parse(ev.raw_data) : ev.raw_data; } 
-            catch (err) { console.error("JSON Parse error on ID", ev.id); }
-        }
-        return { ...ev, raw_data: parsedData };
-    });
-
-    drawVisitorTimelineChart(events);
-    drawDeviceCategoryChart(events);
-});
-
 function drawDeviceCategoryChart(events) {
-    const chartContainer = d3.select("#activity-chart"); 
+    const chartContainer = d3.select("#device-category-chart");
+    if (chartContainer.empty()) return;
     chartContainer.html("");
     
     // 1. Extract unique visitors (sessions) and determine device category
@@ -168,7 +153,8 @@ function drawDeviceCategoryChart(events) {
 }
 
 function drawVisitorTimelineChart(events) {
-    const chartContainer = d3.select("#performance-chart");
+    const chartContainer = d3.select("#visitor-timeline-chart");
+    if (chartContainer.empty()) return;
     chartContainer.html("");
 
     const dailyStats = new Map();

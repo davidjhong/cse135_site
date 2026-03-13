@@ -13,6 +13,16 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
+.chart-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.chart-panel {
+    position: relative;
+}
+
 svg {
     display: block;
     margin: 0 auto;
@@ -134,7 +144,7 @@ svg {
 .badge.activity_update { background-color: #007bff; }
 .badge.page_exit { background-color: #6c757d; }
 
-#performance-chart, #activity-chart { position: relative; }
+#loadtime-chart, #error-rate-chart, #visitor-timeline-chart, #device-category-chart { position: relative; }
 .chart-title { text-align: center; color: #6c757d; font-size: 18px; margin-bottom: 5px; }
 .chart-title-small { font-size: 16px; margin-bottom: 10px; }
 .chart-empty-state { text-align: center; padding-top: 50px; color: #6c757d; }

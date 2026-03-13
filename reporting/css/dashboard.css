@@ -70,6 +70,10 @@ a.logout:hover {
     box-sizing: border-box;
 }
 
+.report-input-area {
+    margin-top: 8px;
+}
+
 .save-btn {
     background-color: #007bff;
     color: white;

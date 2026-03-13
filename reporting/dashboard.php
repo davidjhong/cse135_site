@@ -66,27 +66,45 @@ function canView($section, $allowedSections) {
     <div class="charts-grid">
         <?php if (canView('performance', $allowedSections)): ?>
         <div class="chart-card">
-            <div id="performance-chart"></div> 
+            <div class="chart-stack">
+                <div id="loadtime-chart" class="chart-panel"></div>
+                <?php if ($userRole !== 'viewer'): ?>
+                <div class="report-input-area">
+                    <textarea id="loadtime-comment" placeholder="Add Load Time Analysis..."></textarea>
+                    <button onclick="saveReport('performance', 'Load Time Chart', 'loadtime-comment')" class="save-btn">Save Load Time Report</button>
+                </div>
+                <?php endif; ?>
 
-            <?php if ($userRole !== 'viewer'): ?>
-            <div class="report-input-area">
-                <textarea id="performance-comment" placeholder="Add Performance Analysis..."></textarea>
-                <button onclick="saveReport('performance', 'Traffic Overview Timeline')" class="save-btn">Save Report</button>
+                <div id="error-rate-chart" class="chart-panel"></div>
+                <?php if ($userRole !== 'viewer'): ?>
+                <div class="report-input-area">
+                    <textarea id="error-rate-comment" placeholder="Add Error Rate Analysis..."></textarea>
+                    <button onclick="saveReport('performance', 'Error Rate Chart', 'error-rate-comment')" class="save-btn">Save Error Rate Report</button>
+                </div>
+                <?php endif; ?>
             </div>
-            <?php endif; ?>
         </div>
         <?php endif; ?>
 
         <?php if (canView('behavior', $allowedSections)): ?>
         <div class="chart-card">
-            <div id="activity-chart"></div>
+            <div class="chart-stack">
+                <div id="visitor-timeline-chart" class="chart-panel"></div>
+                <?php if ($userRole !== 'viewer'): ?>
+                <div class="report-input-area">
+                    <textarea id="visitor-timeline-comment" placeholder="Add Visitor Timeline Analysis..."></textarea>
+                    <button onclick="saveReport('behavior', 'Visitor Timeline Chart', 'visitor-timeline-comment')" class="save-btn">Save Visitor Timeline Report</button>
+                </div>
+                <?php endif; ?>
 
-            <?php if ($userRole !== 'viewer'): ?>
-            <div class="report-input-area">
-                <textarea id="behavior-comment" placeholder="Add Behavior Analysis..."></textarea>
-                <button onclick="saveReport('behavior', 'Device Category Pie Chart')" class="save-btn">Save Report</button>
+                <div id="device-category-chart" class="chart-panel"></div>
+                <?php if ($userRole !== 'viewer'): ?>
+                <div class="report-input-area">
+                    <textarea id="device-category-comment" placeholder="Add Device Category Analysis..."></textarea>
+                    <button onclick="saveReport('behavior', 'Device Category Pie Chart', 'device-category-comment')" class="save-btn">Save Device Category Report</button>
+                </div>
+                <?php endif; ?>
             </div>
-            <?php endif; ?>
         </div>
         <?php endif; ?> 
     </div>  
@@ -99,6 +117,8 @@ function canView($section, $allowedSections) {
     <?php endif; ?>
 
     <script src="js/dashboard.js"></script>
-    <script src="js/charts.js"></script>
+    <script src="js/charts-performance.js"></script>
+    <script src="js/charts-behavior.js"></script>
+    <script src="js/charts-controller.js"></script>
 </body>
 </html>

@@ -159,15 +159,14 @@ window.deleteEvent = function(id) {
         .catch(error => alert(error.message));
 };
 
-window.saveReport = function(category, chartName) {
-    const textArea = document.getElementById(`${category}-comment`);
-    const text = textArea.value.trim();
-
-    if (!text) {
-        alert("Please enter some analysis before saving.");
+window.saveReport = function(category, chartName, inputId) {
+    const textArea = document.getElementById(inputId || `${category}-comment`);
+    if (!textArea) {
+        alert('Report input not found.');
         return;
     }
 
+    const text = textArea.value.trim();
 
     if (!text) {
         alert("Please enter some analysis before saving.");
