@@ -22,11 +22,18 @@ window.drawReliabilityDashboard = function(events) {
         'runtime_error': 'Runtime JS Error'
     };
 
+    // Debug: Track page path extraction
+    const pagePathDebug = new Map();
+
     for (const event of events) {
         if (!event.raw_data) continue;
 
         const timestamp = new Date(event.created_at);
         const pagePath = extractPagePath(event.url || '');
+        
+        // Increment debug counter
+        pagePathDebug.set(pagePath, (pagePathDebug.get(pagePath) || 0) + 1);
+        
         let failureRecords = [];
 
         // Parse activities array if present
@@ -92,6 +99,32 @@ window.drawReliabilityDashboard = function(events) {
         });
     });
 
+    // Log debug info
+    if (normalizedFailures.length === 0) {
+        console.warn("[Reliability Dashboard] No failures normalized. Events received:", events.length);
+        console.warn("[Reliability Dashboard] Sample event URLs:", events.slice(0, 3).map(e => e.url));
+        console.warn("[Reliability Dashboard] Page paths extracted:", Array.from(pagePathDebug.entries()));
+        
+        // Check if raw_data has activities at all
+        const eventsWithActivities = events.filter(e => e.raw_data && e.raw_data.activities).length;
+        console.warn("[Reliability Dashboard] Events with activities:", eventsWithActivities);
+        
+        // Sample some activities
+        for (const event of events.slice(0, 5)) {
+            if (event.raw_data?.activities?.length > 0) {
+                console.log("[Reliability Dashboard] Sample activities from event:", {
+                    url: event.url,
+                    activitiesCount: event.raw_data.activities.length,
+                    activityTypes: event.raw_data.activities.map(a => a.type)
+                });
+            }
+        }
+    } else {
+        console.log("[Reliability Dashboard] Normalized failures:", normalizedFailures.length);
+        console.log("[Reliability Dashboard] Failures by type:", Array.from(failuresByType.entries()));
+        console.log("[Reliability Dashboard] Failures by page:", Array.from(failuresByPage.entries()));
+    }
+
     // Draw charts if data exists
     if (normalizedFailures.length > 0) {
         drawFailureTypeChart(failuresByType, FAILURE_COLORS);
@@ -105,11 +138,41 @@ window.drawReliabilityDashboard = function(events) {
 // ==========================================
 
 function extractPagePath(url) {
+    // Robust page path extraction with fallback logic
+    if (!url) return '/';
+    
     try {
         const urlObj = new URL(url, window.location.origin);
-        return urlObj.pathname || '/';
+        let pathname = urlObj.pathname || '/';
+        
+        // Normalize common patterns
+        if (pathname === '/' || pathname === '/index.html' || pathname === '/index.php') {
+            return '/';
+        }
+        
+        // Remove trailing slashes and query strings
+        pathname = pathname.replace(/\/$/, ''); // Remove trailing slash
+        pathname = pathname.split('?')[0].split('#')[0]; // Remove query/fragment
+
+        // Preserve meaningful path segments
+        // Examples: /products.html, /product-detail.html, /checkout.html, /test/products.html
+        return pathname || '/';
     } catch (e) {
-        return '/';
+        // Fallback: try parsing as relative URL
+        try {
+            let path = url;
+            if (path.startsWith('http')) {
+                path = new URL(url).pathname;
+            } else if (path.startsWith('/')) {
+                // Already a path
+            } else {
+                path = '/' + path;
+            }
+            path = path.replace(/\/$/, '').split('?')[0].split('#')[0];
+            return path || '/';
+        } catch (e2) {
+            return '/';
+        }
     }
 }
 
@@ -239,19 +302,22 @@ function drawFailureTypeChart(failuresByType, colorMap) {
         .attr("fill", d => colorMap[d.type] || '#999')
         .style("cursor", "pointer")
         .on("mouseover", function(event, d) {
-            d3.select(this).attr("opacity", 0.85);
+            d3.select(this).attr("opacity", 1);
             const percentage = ((d.count / totalFailures) * 100).toFixed(1);
             tooltip.style("opacity", 1)
-                .html(`<div class="chart-tooltip-heading">${d.type}</div>
-                       <div>Count: ${d.count}</div>
-                       <div>% of total: ${percentage}%</div>`);
+                .html(`<div style="font-weight: bold; margin-bottom: 6px;">${d.type}</div>
+                       <div style="margin-bottom: 4px;">
+                           <div style="font-weight: 600; color: ${colorMap[d.type] || '#999'};">Count: ${d.count}</div>
+                           <div style="font-size: 11px; color: #ccc; margin-top: 2px;">${percentage}% of total failures</div>
+                       </div>`);
         })
         .on("mousemove", (event) => {
-            tooltip.style("left", (event.pageX + 10) + "px")
-                .style("top", (event.pageY - 28) + "px");
+            const [xPos, yPos] = d3.pointer(event, container.node());
+            tooltip.style("left", (xPos + 15) + "px")
+                .style("top", (yPos - 28) + "px");
         })
         .on("mouseout", function() {
-            d3.select(this).attr("opacity", 1);
+            d3.select(this).attr("opacity", 0.85);
             tooltip.style("opacity", 0);
         });
 
@@ -368,22 +434,30 @@ function drawFailureByPageChart(failuresByPage, colorMap, failureTypes) {
         .style("stroke", "white")
         .style("stroke-width", "1px")
         .style("cursor", "pointer")
+        .attr("opacity", 0.85)
         .on("mouseover", function(event, d) {
+            d3.select(this).attr("opacity", 1);
             const failureType = d3.select(this.parentNode).datum().key;
-            const count = d[1] - d[0];
+            const count = Math.round(d[1] - d[0]);
             const percentage = ((count / d.data.total) * 100).toFixed(1);
             
             tooltip.style("opacity", 1)
-                .html(`<div class="chart-tooltip-heading">${d.data.page}</div>
-                       <div>${failureType}</div>
-                       <div>Count: ${count}</div>
-                       <div>% of page: ${percentage}%</div>`);
+                .html(`<div style="font-weight: bold; margin-bottom: 6px;">${d.data.page}</div>
+                       <div style="margin-bottom: 4px;">
+                           <div style="font-weight: 600; color: ${colorMap[failureType] || '#999'};">${failureType}</div>
+                           <div style="font-size: 11px; color: #ccc; margin-top: 2px;">${count} failures (${percentage}% of page failures)</div>
+                       </div>
+                       <div style="border-top: 1px solid #666; padding-top: 4px; margin-top: 6px; font-size: 11px; color: #aaa;">
+                           Total on page: ${d.data.total} failures
+                       </div>`);
         })
         .on("mousemove", (event) => {
-            tooltip.style("left", (event.pageX + 10) + "px")
-                .style("top", (event.pageY - 28) + "px");
+            const [xPos, yPos] = d3.pointer(event, container.node());
+            tooltip.style("left", (xPos + 15) + "px")
+                .style("top", (yPos - 28) + "px");
         })
         .on("mouseout", function() {
+            d3.select(this).attr("opacity", 0.85);
             tooltip.style("opacity", 0);
         });
 
@@ -416,6 +490,54 @@ function drawFailureByPageChart(failuresByPage, colorMap, failureTypes) {
 
     svg.append("g")
         .call(d3.axisLeft(y).tickSizeOuter(0));
+}
+
+// ==========================================
+// UTILITY: URL Label Formatting for Display
+// ==========================================
+
+function formatUrlLabel(url, maxLength = 40) {
+    // Format URL for display: prefer hostname + path segment over raw string
+    if (!url) return 'unknown';
+    if (url.length <= maxLength) return url;
+    
+    try {
+        const urlObj = new URL(url);
+        const hostname = urlObj.hostname || 'unknown';
+        const pathname = urlObj.pathname || '';
+        
+        // Strategy 1: Try hostname + path
+        if (hostname.length < maxLength - 5) {
+            // We have room for path
+            const availablePathLength = maxLength - hostname.length - 4; // -4 for "/ ..."
+            if (pathname.length > availablePathLength) {
+                // Truncate path intelligently
+                if (pathname.includes('/')) {
+                    const segments = pathname.split('/').filter(s => s);
+                    let path = '';
+                    for (const seg of segments) {
+                        if ((path + '/' + seg).length + 3 <= availablePathLength) {
+                            path += '/' + seg;
+                        } else {
+                            path += '/...';
+                            break;
+                        }
+                    }
+                    return hostname + path;
+                } else {
+                    return hostname + pathname.substring(0, availablePathLength) + '...';
+                }
+            } else {
+                return hostname + pathname;
+            }
+        } else {
+            // Hostname alone is long, truncate it
+            return hostname.substring(0, maxLength - 3) + '...';
+        }
+    } catch (e) {
+        // Not a valid URL, do simple truncation
+        return url.substring(0, maxLength - 3) + '...';
+    }
 }
 
 // ==========================================
@@ -458,29 +580,34 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures, colorMap) {
 
     container.html("").style("position", "relative");
 
-    // Build data with url and type info
-    const urlMap = new Map();
+    // Build comprehensive URL data with all failure context
+    const urlDetailMap = new Map();
 
     for (const failure of allFailures) {
         if (!failure.target) continue;
         
-        if (!urlMap.has(failure.target)) {
-            urlMap.set(failure.target, {
+        const urlKey = failure.target;
+        if (!urlDetailMap.has(urlKey)) {
+            urlDetailMap.set(urlKey, {
                 url: failure.target,
                 count: 0,
                 types: new Map(),
-                pages: new Set()
+                pages: new Set(),
+                messages: []
             });
         }
 
-        const entry = urlMap.get(failure.target);
+        const entry = urlDetailMap.get(urlKey);
         entry.count += 1;
         entry.types.set(failure.failureType, (entry.types.get(failure.failureType) || 0) + 1);
-        entry.pages.add(failure.pagePath);
+        entry.pages.add(failure.pagePath || '/');
+        if (failure.message && entry.messages.length < 3) {
+            entry.messages.push(failure.message);
+        }
     }
 
-    // Convert to array and sort
-    const topUrls = Array.from(urlMap.values())
+    // Convert to array and sort by count
+    const topUrls = Array.from(urlDetailMap.values())
         .sort((a, b) => b.count - a.count)
         .slice(0, 10);
 
@@ -493,7 +620,7 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures, colorMap) {
 
     const width = Math.max(container.node().getBoundingClientRect().width || 500, 500);
     const height = 60 + topUrls.length * 35;
-    const margin = { top: 50, right: 30, bottom: 40, left: 240 };  // Increased for longer labels
+    const margin = { top: 50, right: 30, bottom: 40, left: 260 };  // Increased for readable labels
     const innerW = width - margin.left - margin.right;
     const innerH = height - margin.top - margin.bottom;
 
@@ -524,9 +651,12 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures, colorMap) {
     const tooltip = container.append("div")
         .attr("class", "chart-tooltip")
         .style("opacity", 0)
-        .style("max-width", "320px");
+        .style("position", "absolute")
+        .style("pointer-events", "none")
+        .style("z-index", "100")
+        .style("max-width", "340px");
 
-    // Bars colored by dominant failure type
+    // Bars colored by dominant failure type for that URL
     svg.selectAll("rect.url-bar")
         .data(topUrls)
         .join("rect")
@@ -548,30 +678,49 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures, colorMap) {
             return colorMap[maxType] || '#999';
         })
         .style("cursor", "pointer")
+        .attr("opacity", 0.85)
         .on("mouseover", function(event, d) {
-            d3.select(this).attr("opacity", 0.85);
+            d3.select(this).attr("opacity", 1);
             
+            // Build type breakdown
             const typesList = Array.from(d.types.entries())
-                .map(([type, count]) => `${type}: ${count}`)
+                .sort((a, b) => b[1] - a[1])
+                .map(([type, count]) => {
+                    const pct = ((count / d.count) * 100).toFixed(0);
+                    return `<span style="color: ${colorMap[type] || '#999'};">●</span> ${type}: ${count} (${pct}%)`;
+                })
                 .join('<br/>');
 
+            // Build page context
+            const pageContext = d.pages.size > 1 
+                ? `Seen on ${d.pages.size} pages` 
+                : `Page: ${Array.from(d.pages)[0] || '/'}`;
+
             tooltip.style("opacity", 1)
-                .html(`<div class="chart-tooltip-heading" style="word-break: break-word; margin-bottom: 8px;">
-                       <strong>${d.url}</strong>
+                .html(`<div style="font-weight: bold; margin-bottom: 6px; word-break: break-word; border-bottom: 1px solid #666; padding-bottom: 4px;">
+                           ${d.url}
                        </div>
-                       <div style="margin-bottom: 6px;">Total Failures: <strong>${d.count}</strong></div>
-                       <div style="border-top: 1px solid #999; padding-top: 6px; margin-top: 6px; font-size: 11px;">${typesList}</div>`);
+                       <div style="margin-bottom: 6px; font-size: 12px; color: #0099cc; font-weight: 600;">
+                           Total Failures: ${d.count}
+                       </div>
+                       <div style="margin-bottom: 4px; font-size: 11px;">
+                           ${typesList}
+                       </div>
+                       <div style="border-top: 1px solid #666; padding-top: 4px; margin-top: 6px; font-size: 11px; color: #aaa;">
+                           ${pageContext}
+                       </div>`);
         })
         .on("mousemove", (event) => {
-            tooltip.style("left", (event.pageX + 10) + "px")
-                .style("top", (event.pageY - 28) + "px");
+            const [xPos, yPos] = d3.pointer(event, container.node());
+            tooltip.style("left", (xPos + 15) + "px")
+                .style("top", (yPos - 28) + "px");
         })
         .on("mouseout", function() {
-            d3.select(this).attr("opacity", 1);
+            d3.select(this).attr("opacity", 0.85);
             tooltip.style("opacity", 0);
         });
 
-    // URL labels - smart truncation
+    // URL labels - using cleaned display labels
     svg.selectAll("text.url-label")
         .data(topUrls)
         .join("text")
@@ -582,13 +731,13 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures, colorMap) {
         .attr("text-anchor", "end")
         .attr("font-size", "11px")
         .attr("fill", "#333")
-        .text(d => smartTruncateUrl(d.url, 40))
+        .text(d => formatUrlLabel(d.url, 50))
         .style("cursor", "pointer")
         .on("mouseover", function() {
-            d3.select(this).attr("fill", "#0056b3");
+            d3.select(this).attr("fill", "#0056b3").attr("font-weight", "600");
         })
         .on("mouseout", function() {
-            d3.select(this).attr("fill", "#333");
+            d3.select(this).attr("fill", "#333").attr("font-weight", "normal");
         });
 
     // Count labels
@@ -601,10 +750,14 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures, colorMap) {
         .attr("dy", "0.35em")
         .attr("font-size", "12px")
         .attr("fill", "#333")
+        .attr("font-weight", "600")
         .text(d => d.count);
 
     // Axes
     svg.append("g")
         .attr("transform", `translate(0,${innerH})`)
         .call(d3.axisBottom(x).ticks(4));
+
+    svg.append("g")
+        .call(d3.axisLeft(y).tickSizeOuter(0));
 }
