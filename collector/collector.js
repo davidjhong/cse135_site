@@ -168,10 +168,13 @@
         const resource = args[0] instanceof Request ? args[0].url : args[0];
         const method = (args[1] && args[1].method) || 'GET';
         
+        // Skip monitoring the analytics endpoint itself to avoid recursion
+        const isAnalyticsEndpoint = resource && resource.includes('collect.php');
+        
         return originalFetch.apply(this, args)
             .then(response => {
-                // Log non-2xx responses
-                if (!response.ok) {
+                // Log non-2xx responses (except for analytics endpoint)
+                if (!response.ok && !isAnalyticsEndpoint) {
                     recordActivity('api_failure', {
                         url: response.url,
                         method: method,
@@ -183,14 +186,16 @@
                 return response;
             })
             .catch(error => {
-                // Network error or other fetch failure
-                recordActivity('api_failure', {
-                    url: resource,
-                    method: method,
-                    statusCode: 0,
-                    statusText: error.message || 'Network Error',
-                    failureType: 'api_failure'
-                });
+                // Network error or other fetch failure (except for analytics endpoint)
+                if (!isAnalyticsEndpoint) {
+                    recordActivity('api_failure', {
+                        url: resource,
+                        method: method,
+                        statusCode: 0,
+                        statusText: error.message || 'Network Error',
+                        failureType: 'api_failure'
+                    });
+                }
                 throw error;
             });
     };
@@ -200,11 +205,14 @@
     XMLHttpRequest.prototype.open = function(method, url) {
         this._method = method;
         this._url = url;
+        this._isAnalyticsEndpoint = url && url.includes('collect.php');
         
         const originalOnReadyStateChange = this.onreadystatechange;
         this.onreadystatechange = function() {
             if (this.readyState === 4) {  // Complete
-                if (!this.ok && this.status !== 0) {  // 0 = hasn't loaded or error occurred
+                // Log failures only for non-2xx status codes (except analytics endpoint)
+                const isError = this.status < 200 || this.status >= 300;
+                if (isError && this.status !== 0 && !this._isAnalyticsEndpoint) {
                     recordActivity('api_failure', {
                         url: this._url,
                         method: this._method,
@@ -227,22 +235,27 @@
     XMLHttpRequest.prototype.addEventListener = function(event, handler) {
         if (event === 'error' || event === 'load') {
             const wrappedHandler = function(e) {
-                if (event === 'error') {
-                    recordActivity('api_failure', {
-                        url: this._url,
-                        method: this._method,
-                        statusCode: 0,
-                        statusText: 'Network Error',
-                        failureType: 'api_failure'
-                    });
-                } else if (event === 'load' && this.status !== 0 && !this.ok) {
-                    recordActivity('api_failure', {
-                        url: this._url,
-                        method: this._method,
-                        statusCode: this.status,
-                        statusText: this.statusText,
-                        failureType: this.status === 404 ? '404_not_found' : 'api_failure'
-                    });
+                if (!this._isAnalyticsEndpoint) {
+                    if (event === 'error') {
+                        recordActivity('api_failure', {
+                            url: this._url,
+                            method: this._method,
+                            statusCode: 0,
+                            statusText: 'Network Error',
+                            failureType: 'api_failure'
+                        });
+                    } else if (event === 'load' && this.status !== 0) {
+                        const isError = this.status < 200 || this.status >= 300;
+                        if (isError) {
+                            recordActivity('api_failure', {
+                                url: this._url,
+                                method: this._method,
+                                statusCode: this.status,
+                                statusText: this.statusText,
+                                failureType: this.status === 404 ? '404_not_found' : 'api_failure'
+                            });
+                        }
+                    }
                 }
                 return handler.call(this, e);
             };
@@ -294,22 +307,16 @@
             payload.activities = activityQueue.splice(0, activityQueue.length);
         }
 
-        // Use an alternative endpoint that doesn't trigger our own fetch monitoring
-        // to prevent recursive failure tracking
-        try {
-            const beacon = navigator.sendBeacon ? navigator.sendBeacon : null;
-            if (beacon) {
-                beacon(ENDPOINT, JSON.stringify(payload));
-            } else {
-                // Fallback for unsupported browsers, but use XMLHttpRequest to avoid recursive fetch
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', ENDPOINT, true);
-                xhr.setRequestHeader('Content-Type', 'application/json');
-                xhr.send(JSON.stringify(payload));
-            }
-        } catch (err) {
-            console.error("Analytics Delivery Error:", err);
-        }
+        // Use fetch with proper JSON content-type and CORS headers
+        // The fetch interception checks _isAnalyticsEndpoint flag to prevent recursive monitoring
+        fetch(ENDPOINT, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload),
+            keepalive: true
+        }).catch((err) => console.error("Analytics Delivery Error:", err));
     }
 
     // load

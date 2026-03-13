@@ -203,6 +203,50 @@
             }
         });
     </script>
+    
+    <!-- 404 Page: 404 & Broken Asset Failures -->
+    <div style="position: fixed; bottom: 10px; right: 10px; background: #fff; padding: 10px; border: 1px solid #000; z-index: 9999; max-width: 200px; font-size: 12px;">
+    <strong>404 ERROR PAGE</strong><br>
+    <small style="color: #666;">Missing Resources</small>
+    <button onclick="triggerSitemap404()" style="display: block; width: 100%; padding: 4px; margin: 4px 0; font-size: 10px; background: #ffcccc;">Sitemap 404</button>
+    <button onclick="loadMissingFavicon()" style="display: block; width: 100%; padding: 4px; margin: 4px 0; font-size: 10px; background: #ffffcc;">Missing Favicon</button>
+    <script>
+        function triggerSitemap404() {
+            fetch('/sitemap-missing.xml')
+                .catch(err => console.error('Sitemap fetch failed'));
+        }
+        function loadMissingFavicon() {
+            const link = document.createElement('link');
+            link.rel = 'icon';
+            link.href = '/favicon-missing.ico';
+            document.head.appendChild(link);
+        }
+    </script>
+    </div>
+    
+    <!-- Auto-load 404-catching resources -->
+    <div style="display: none;">
+        <img src="/images/404-illustration.jpg" alt="broken">
+        <img src="/manifest-missing.json" alt="broken">
+        <link rel="stylesheet" href="/css/404-custom-theme.css">
+    </div>
+    
+    <script>
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                // Sitemap API
+                fetch('/api/sitemap')
+                    .catch(err => console.log('sitemap api failed'));
+                // Search API
+                fetch('/api/search/suggestions')
+                    .catch(err => console.log('search failed'));
+                // Error reporting API
+                fetch('/api/report-404-error', {method: 'POST'})
+                    .catch(err => console.log('error reporting failed'));
+            }, 1500);
+        });
+    </script>
+    
     <script src="js/wreckage-upgrade.js"></script>
 </body>
 </html>

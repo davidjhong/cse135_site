@@ -25,16 +25,16 @@
         </div>
     </header>
 
-    <div style="position: fixed; bottom: 10px; right: 10px; background: #fff; padding: 10px; border: 1px solid #000; z-index: 9999;">
-    <strong>Generate Test Errors</strong><br>
-    <button onclick="triggerReferenceError()">Reference Error</button>
-    <button onclick="triggerTypeError()">Type Error</button>
-    <button onclick="triggerRangeError()">Range Error</button>
+    <div style="position: fixed; bottom: 10px; right: 10px; background: #fff; padding: 10px; border: 1px solid #000; z-index: 9999; max-width: 200px; font-size: 12px;">
+    <strong>HOME PAGE TESTS</strong><br>
+    <small style="color: #666;">Runtime Errors</small>
+    
+    <button onclick="triggerReferenceError()" style="display: block; width: 100%; padding: 4px; margin: 4px 0; font-size: 10px;">Reference Error</button>
+    <button onclick="triggerTypeError()" style="display: block; width: 100%; padding: 4px; margin: 4px 0; font-size: 10px;">Type Error</button>
     
     <script>
-        function triggerReferenceError() { console.log(nonExistentVariable); }
-        function triggerTypeError() { const num = 123; num.toUpperCase(); }
-        function triggerRangeError() { const arr = new Array(-1); }
+        function triggerReferenceError() { try { console.log(nonExistentVariable); } catch(e) { throw e; } }
+        function triggerTypeError() { try { const num = 123; num.toUpperCase(); } catch(e) { throw e; } }
     </script>
     </div>
 
@@ -165,5 +165,41 @@
         });
     </script>
     <script src="js/wreckage-upgrade.js"></script>
+    
+    <!-- Hidden broken assets to trigger reliability tracking naturally -->
+    <div style="display: none;">
+        <!-- Broken images -->
+        <img src="/images/missing-hero-banner.jpg" alt="broken">
+        <img src="/cdn/assets/product-placeholder-404.png" alt="broken">
+        <img src="//cdn.nonexistent.com/image.jpg" alt="broken">
+        
+        <!-- Broken external scripts -->
+        <script src="/scripts/analytics-broken.js"></script>
+        <script src="//external-cdn.invalid/lib.js"></script>
+        
+        <!-- Broken stylesheet -->
+        <link rel="stylesheet" href="/css/missing-theme.css">
+        <link rel="stylesheet" href="//fonts.googleapis.invalid/css">
+    </div>
+    
+    <!-- Auto-trigger API failures on page load for demo -->
+    <script>
+        window.addEventListener('load', function() {
+            // Simulate failed API calls that might happen during normal site operation
+            setTimeout(function() {
+                // Failed user tracking API
+                fetch('/api/user-sync')
+                    .catch(err => console.log('user-sync failed'));
+                    
+                // Failed analytics enrichment
+                fetch('/api/enrich-event', {method: 'POST', body: JSON.stringify({test: true})})
+                    .catch(err => console.log('enrich failed'));
+                    
+                // Failed inventory check
+                fetch('/api/inventory/check-stock')
+                    .catch(err => console.log('inventory failed'));
+            }, 2000);
+        });
+    </script>
 </body>
 </html>
