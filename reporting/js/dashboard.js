@@ -158,3 +158,89 @@ window.deleteEvent = function(id) {
         })
         .catch(error => alert(error.message));
 };
+
+window.saveReport = function(category) {
+    const textArea = document.getElementById(`${category}-comment`);
+    const text = textArea.value.trim();
+
+    if (!text) {
+        alert("Please enter some analysis before saving.");
+        return;
+    }
+
+    fetch('/api/reports.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            category: category,
+            comment_text: text
+        })
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('Failed to save report');
+        return response.json();
+    })
+    .then(data => {
+        alert(data.message);
+        textArea.value = ''; // Clear the box on success
+        if (typeof loadReports === 'function') loadReports(); // Refresh feed if visible
+    })
+    .catch(error => alert(error.message));
+};
+
+window.loadReports = function() {
+    const feed = document.getElementById('reports-feed');
+    if (!feed) return;
+
+    fetch('/api/reports.php')
+        .then(res => res.json())
+        .then(data => {
+            feed.replaceChildren();
+
+            if (data.length === 0) {
+                const empty = document.createElement('p');
+                empty.textContent = 'No reports have been saved yet.';
+                feed.appendChild(empty);
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+            data.forEach(report => {
+
+                const card = document.createElement('div');
+                card.className = 'report-card';
+
+                const title = document.createElement('h4');
+                title.className = 'report-card-title';
+                title.textContent = `${report.category} Report`;
+
+                const body = document.createElement('p');
+                body.className = 'report-card-body';
+                body.textContent = report.comment_text || '';
+
+                const meta = document.createElement('small');
+                meta.className = 'report-card-meta';
+                meta.append('Authored by ');
+
+                const username = document.createElement('strong');
+                username.textContent = report.username || 'Unknown';
+                meta.append(username, ` on ${report.created_at || ''}`);
+
+                card.append(title, body, meta);
+                fragment.appendChild(card);
+            });
+            feed.appendChild(fragment);
+        })
+        .catch(() => {
+            feed.replaceChildren();
+            const errMsg = document.createElement('p');
+            errMsg.className = 'error';
+            errMsg.textContent = 'Failed to load reports.';
+            feed.appendChild(errMsg);
+        });
+};
+
+// Auto-load reports if the container exists
+if (document.getElementById('reports-feed')) {
+    loadReports();
+}

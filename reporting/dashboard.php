@@ -67,15 +67,36 @@ function canView($section, $allowedSections) {
         <?php if (canView('performance', $allowedSections)): ?>
         <div class="chart-card">
             <div id="performance-chart"></div> 
+
+            <?php if ($userRole !== 'viewer'): ?>
+            <div class="report-input-area">
+                <textarea id="performance-comment" placeholder="Add Performance Analysis..."></textarea>
+                <button onclick="saveReport('performance')" class="save-btn">Save Report</button>
+            </div>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
 
         <?php if (canView('behavior', $allowedSections)): ?>
         <div class="chart-card">
-            <div id="activity-chart"></div> 
+            <div id="activity-chart"></div>
+
+            <?php if ($userRole !== 'viewer'): ?>
+            <div class="report-input-area">
+                <textarea id="behavior-comment" placeholder="Add Behavior Analysis..."></textarea>
+                <button onclick="saveReport('behavior')" class="save-btn">Save Report</button>
+            </div>
+            <?php endif; ?>
         </div>
-        <?php endif; ?>
+        <?php endif; ?> 
     </div>  
+    
+    <?php if ($userRole === 'viewer' || $userRole === 'super_admin'): ?>
+    <div id="saved-reports-container">
+        <h3>Saved Analyst Reports</h3>
+        <div id="reports-feed">Loading reports...</div>
+    </div>
+    <?php endif; ?>
 
     <script src="js/dashboard.js"></script>
     <script src="js/charts.js"></script>

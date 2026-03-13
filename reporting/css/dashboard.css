@@ -55,3 +55,59 @@ a.logout:hover {
 .delete-btn:hover {
     background-color: #c82333;
 }
+
+.report-input-area textarea {
+    width: 100%;
+    min-height: 96px;
+    margin-top: 12px;
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.save-btn {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 14px;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.save-btn:hover {
+    background-color: #0069d9;
+}
+
+.report-card {
+    border: 1px solid #ccc;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    background: #fdfdfd;
+}
+
+.report-card-title {
+    margin-top: 0;
+    color: #333;
+    text-transform: capitalize;
+}
+
+.report-card-body {
+    color: #555;
+    font-size: 14px;
+    white-space: pre-wrap;
+}
+
+.report-card-meta {
+    color: #888;
+}
+
+#saved-reports-container {
+    margin-top: 40px;
+}
