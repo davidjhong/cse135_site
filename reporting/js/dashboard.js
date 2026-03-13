@@ -159,9 +159,15 @@ window.deleteEvent = function(id) {
         .catch(error => alert(error.message));
 };
 
-window.saveReport = function(category) {
+window.saveReport = function(category, chartName) {
     const textArea = document.getElementById(`${category}-comment`);
     const text = textArea.value.trim();
+
+    if (!text) {
+        alert("Please enter some analysis before saving.");
+        return;
+    }
+
 
     if (!text) {
         alert("Please enter some analysis before saving.");
