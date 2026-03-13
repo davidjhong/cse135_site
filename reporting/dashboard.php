@@ -65,17 +65,19 @@ function canView($section, $allowedSections) {
 
     <?php if (canView('performance', $allowedSections)): ?>
     <div class="perf-charts-box">
-        <div class="perf-row">
+        <div class="perf-row-top">
             <div id="perf-trend-chart" class="chart-panel"></div>
             <div id="perf-bar-chart" class="chart-panel"></div>
+        </div>
+        <div class="perf-row-bottom">
             <div id="perf-box-plot" class="chart-panel"></div>
+            <?php if ($userRole !== 'viewer'): ?>
+            <div class="report-input-area">
+                <textarea id="loadtime-comment" placeholder="Add Load Time Analysis..."></textarea>
+                <button onclick="saveReport('performance', 'Load Time Charts', 'loadtime-comment')" class="save-btn">Save Load Time Report</button>
+            </div>
+            <?php endif; ?>
         </div>
-        <?php if ($userRole !== 'viewer'): ?>
-        <div class="report-input-area">
-            <textarea id="loadtime-comment" placeholder="Add Load Time Analysis..."></textarea>
-            <button onclick="saveReport('performance', 'Load Time Charts', 'loadtime-comment')" class="save-btn">Save Load Time Report</button>
-        </div>
-        <?php endif; ?>
     </div>
     <?php endif; ?>
 

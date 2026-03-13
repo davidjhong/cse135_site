@@ -21,29 +21,45 @@ svg {
     position: relative;
 }
 
-/* === Performance: 3-chart horizontal box === */
+/* === Performance: 2-row layout box with improved spacing === */
 .perf-charts-box {
     background: white;
-    padding: 1.5rem;
+    padding: 2rem 1.5rem 1.5rem 1.5rem;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     margin-bottom: 20px;
+    margin-top: 2rem;
     overflow-x: hidden;
+}
+
+.perf-row-top {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.perf-row-bottom {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    overflow: hidden;
 }
 
 .perf-row {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 12px;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
     margin-bottom: 8px;
     overflow: hidden;
 }
 
-/* === Lower section: error rate + behavior side by side === */
+/* === Lower section: error rate and behavior stacked vertically === */
 .lower-charts-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    grid-template-columns: 1fr;
+    gap: 20px;
     margin-bottom: 20px;
     overflow-x: hidden;
 }

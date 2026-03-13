@@ -56,10 +56,17 @@ a.logout:hover {
     background-color: #c82333;
 }
 
+.report-input-area {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
 .report-input-area textarea {
     width: 100%;
-    min-height: 96px;
-    margin-top: 12px;
+    flex: 1;
+    min-height: 280px;
+    margin-top: 0;
     margin-bottom: 10px;
     padding: 10px;
     border: 1px solid #ced4da;
@@ -68,10 +75,6 @@ a.logout:hover {
     font-size: 0.95rem;
     resize: vertical;
     box-sizing: border-box;
-}
-
-.report-input-area {
-    margin-top: 8px;
 }
 
 .save-btn {
