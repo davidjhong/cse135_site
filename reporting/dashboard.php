@@ -31,7 +31,7 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
             <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Session ID</th>
+                    <th>User ID</th> <th>Session ID</th>
                     <th>Event Type</th>
                     <th>Created At</th>
                     <th>Raw Payload</th>

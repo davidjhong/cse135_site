@@ -134,28 +134,27 @@
     });
 
     function send(payloadType) {
-        // Nest everything correctly so the PHP API catches it in 'raw_data'
         const payload = {
-            session_id: getSID(),
-            event_type: payloadType,
-            raw_data: {
-                user_id: getUID(),
-                url: window.location.href,
-                timestamp: Date.now()
-            }
+            session: getSID(),         
+            user_id: getUID(),         // 1-year cookie ID
+            url: window.location.href, 
+            type: payloadType,         
+            timestamp: Date.now()
         };
 
         if (payloadType === 'page_load') {
-            payload.raw_data.static = getStaticData();
-            payload.raw_data.performance = getPerformanceData();
+            payload.static = getStaticData();
+            payload.performance = getPerformanceData();
         } else if (payloadType === 'activity_update' || payloadType === 'page_exit') {
             if (activityQueue.length === 0 && payloadType !== 'page_exit') return;
-            payload.raw_data.activities = activityQueue.splice(0, activityQueue.length);
+            payload.activities = activityQueue.splice(0, activityQueue.length);
         }
 
         fetch(ENDPOINT, {
             method: 'POST', 
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify(payload),
             keepalive: true
         }).catch((err) => console.error("Analytics Delivery Error:", err));
