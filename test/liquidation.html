@@ -140,8 +140,12 @@
             });
         }
         function triggerVaultApiFail() {
-            fetch('/api/vault/inventory')
-                .catch(err => console.error('Vault inventory failed'));
+            // 500 Server Error - vault operation fails
+            fetch('/reporting/api/events.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ vault: 'server_error' })
+            }).catch(err => console.error('Vault inventory failed'));
         }
     </script>
     </div>
@@ -156,15 +160,23 @@
     <script>
         window.addEventListener('load', function() {
             setTimeout(function() {
-                // Vault inventory API
-                fetch('/api/vault/list-items')
-                    .catch(err => console.log('vault list failed'));
-                // Vault pricing API
-                fetch('/api/vault/current-prices')
+                // Vault inventory API - 403 Forbidden
+                fetch('/reporting/api/reports.php', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ vault: 'forbidden' })
+                }).catch(err => console.log('vault list failed'));
+                
+                // Vault pricing API - 400 Bad Request
+                fetch('/reporting/api/events.php?vaultPricingError=true')
                     .catch(err => console.log('vault pricing failed'));
-                // Vault access log (audit)
-                fetch('/api/vault/access-log')
-                    .catch(err => console.log('vault audit failed'));
+                
+                // Vault access log API - 422 Unprocessable
+                fetch('/reporting/api/events.php', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ audit: 'unprocessable' })
+                }).catch(err => console.log('vault audit failed'));
             }, 2000);
         });
     </script>

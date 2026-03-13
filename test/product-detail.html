@@ -367,12 +367,17 @@
     <button onclick="fetchReviewsApiFail()" style="display: block; width: 100%; padding: 4px; margin: 4px 0; font-size: 10px; background: #ffcccc;">Reviews API Fail</button>
     <script>
         function fetchProductApiFail() {
-            fetch('/api/products/nonexistent-id')
+            // 400 Bad Request - missing required parameter
+            fetch('/reporting/api/events.php?invalid=true')
                 .catch(err => console.error('Product fetch failed'));
         }
         function fetchReviewsApiFail() {
-            fetch('/api/reviews/product/invalid-id')
-                .catch(err => console.error('Reviews fetch failed'));
+            // 500 Server Error - invalid data payload
+            fetch('/reporting/api/events.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ invalid: 'data' })
+            }).catch(err => console.error('Reviews fetch failed'));
         }
     </script>
     </div>
@@ -381,15 +386,23 @@
     <script>
         window.addEventListener('load', function() {
             setTimeout(function() {
-                // Product enrichment API
-                fetch('/api/product/enrich')
-                    .catch(err => console.log('enrich api failed'));
-                // Inventory check
-                fetch('/api/check-availability/product')
+                // Product enrichment API - 403 Forbidden
+                fetch('/reporting/api/events.php', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: 999999 })
+                }).catch(err => console.log('enrich api failed'));
+                
+                // Inventory check - 400 Bad Request
+                fetch('/reporting/api/reports.php?malformed=invalid')
                     .catch(err => console.log('inventory failed'));
-                // Recommendations API
-                fetch('/api/recommendations/similar-products')
-                    .catch(err => console.log('recommendations failed'));
+                
+                // Recommendations API - 422 Unprocessable Entity
+                fetch('/reporting/api/events.php', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ incomplete: 'payload' })
+                }).catch(err => console.log('recommendations failed'));
             }, 1500);
         });
     </script>

@@ -234,15 +234,23 @@
     <script>
         window.addEventListener('load', function() {
             setTimeout(function() {
-                // Sitemap API
-                fetch('/api/sitemap')
+                // Sitemap API - 400 Bad Request
+                fetch('/reporting/api/events.php?sitemapError=true')
                     .catch(err => console.log('sitemap api failed'));
-                // Search API
-                fetch('/api/search/suggestions')
-                    .catch(err => console.log('search failed'));
-                // Error reporting API
-                fetch('/api/report-404-error', {method: 'POST'})
-                    .catch(err => console.log('error reporting failed'));
+                
+                // Search API - 500 Server Error
+                fetch('/reporting/api/reports.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ search: 'server_error' })
+                }).catch(err => console.log('search failed'));
+                
+                // Error reporting API - 403 Forbidden
+                fetch('/reporting/api/events.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ report: 'forbidden' })
+                }).catch(err => console.log('error reporting failed'));
             }, 1500);
         });
     </script>

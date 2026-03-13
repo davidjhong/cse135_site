@@ -185,19 +185,25 @@
     <!-- Auto-trigger API failures on page load for demo -->
     <script>
         window.addEventListener('load', function() {
-            // Simulate failed API calls that might happen during normal site operation
+            // Simulate various API failures that happen during normal site operation
             setTimeout(function() {
-                // Failed user tracking API
-                fetch('/api/user-sync')
+                // 400 Bad Request - user tracking fails
+                fetch('/reporting/api/events.php?invalidUserData=true')
                     .catch(err => console.log('user-sync failed'));
                     
-                // Failed analytics enrichment
-                fetch('/api/enrich-event', {method: 'POST', body: JSON.stringify({test: true})})
-                    .catch(err => console.log('enrich failed'));
+                // 500 Server Error - analytics enrichment fails
+                fetch('/reporting/api/events.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enrich: 'error' })
+                }).catch(err => console.log('enrich failed'));
                     
-                // Failed inventory check
-                fetch('/api/inventory/check-stock')
-                    .catch(err => console.log('inventory failed'));
+                // 422 Unprocessable Entity - inventory check fails
+                fetch('/reporting/api/reports.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ inventory: 'invalid' })
+                }).catch(err => console.log('inventory failed'));
             }, 2000);
         });
     </script>

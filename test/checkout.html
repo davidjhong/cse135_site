@@ -273,20 +273,28 @@
         });
     </script>
     
-    <!-- Checkout Page: Payment & Form API Failures -->
+    <!-- Checkout Page: API Failures -->
     <div style="position: fixed; bottom: 10px; right: 10px; background: #fff; padding: 10px; border: 1px solid #000; z-index: 9999; max-width: 200px; font-size: 12px;">
     <strong>CHECKOUT PAGE</strong><br>
-    <small style="color: #666;">Payment APIs</small>
-    <button onclick="triggerPaymentFail()" style="display: block; width: 100%; padding: 4px; margin: 4px 0; font-size: 10px; background: #ffcccc;">Payment Fail</button>
-    <button onclick="triggerValidationApiFail()" style="display: block; width: 100%; padding: 4px; margin: 4px 0; font-size: 10px; background: #ffcccc;">Validation API Fail</button>
+    <small style="color: #666;">API Failures</small>
+    <button onclick="triggerPaymentFail()" style="display: block; width: 100%; padding: 4px; margin: 4px 0; font-size: 10px; background: #ffcccc;">Payment Fail (5xx)</button>
+    <button onclick="triggerValidationApiFail()" style="display: block; width: 100%; padding: 4px; margin: 4px 0; font-size: 10px; background: #ffcccc;">Validation Fail (4xx)</button>
     <script>
         function triggerPaymentFail() {
-            fetch('/api/payment/process', {method: 'POST', body: JSON.stringify({amount: 99.99})})
-                .catch(err => console.error('Payment failed'));
+            // 500 Server Error - internal issue
+            fetch('/reporting/api/events.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ process: 'payment_error' })
+            }).catch(err => console.error('Payment failed'));
         }
         function triggerValidationApiFail() {
-            fetch('/api/validate-address', {method: 'POST', body: JSON.stringify({zip: '12345'})})
-                .catch(err => console.error('Validation failed'));
+            // 422 Unprocessable Entity - invalid payload
+            fetch('/reporting/api/events.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ validate: 'incomplete' })
+            }).catch(err => console.error('Validation failed'));
         }
     </script>
     </div>
@@ -295,14 +303,19 @@
     <script>
         window.addEventListener('load', function() {
             setTimeout(function() {
-                // Cart sync API
-                fetch('/api/cart/sync')
+                // Cart sync API - 400 Bad Request
+                fetch('/reporting/api/events.php?badRequest=true')
                     .catch(err => console.log('cart sync failed'));
-                // Shipping rates API
-                fetch('/api/shipping/calculate', {method: 'POST', body: JSON.stringify({weight: 5})})
-                    .catch(err => console.log('shipping calc failed'));
-                // Promo code validation
-                fetch('/api/promo/validate/INVALID2024')
+                
+                // Shipping rates API - 403 Forbidden
+                fetch('/reporting/api/reports.php', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ forbidden: true })
+                }).catch(err => console.log('shipping calc failed'));
+                
+                // Promo code validation - 500 Server Error
+                fetch('/reporting/api/events.php?malformed=true')
                     .catch(err => console.log('promo validation failed'));
             }, 1800);
         });

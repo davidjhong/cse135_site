@@ -29,7 +29,18 @@ window.drawReliabilityDashboard = function(events) {
         if (!event.raw_data) continue;
 
         const timestamp = new Date(event.created_at);
-        const pagePath = extractPagePath(event.url || '');
+        
+        // CRITICAL FIX: Extract page path from payload, not top-level event
+        // Fallback chain: raw_data.url (primary) -> event.url -> other fields
+        const pageUrl = 
+            event.raw_data?.url ||          // Primary: page URL from payload
+            event.url ||                    // Fallback: top-level event URL
+            event.raw_data?.pageUrl ||
+            event.raw_data?.currentUrl ||
+            event.raw_data?.pathname ||
+            '';
+        
+        const pagePath = extractPagePath(pageUrl);
         
         // Increment debug counter
         pagePathDebug.set(pagePath, (pagePathDebug.get(pagePath) || 0) + 1);
@@ -102,7 +113,11 @@ window.drawReliabilityDashboard = function(events) {
     // Log debug info
     if (normalizedFailures.length === 0) {
         console.warn("[Reliability Dashboard] No failures normalized. Events received:", events.length);
-        console.warn("[Reliability Dashboard] Sample event URLs:", events.slice(0, 3).map(e => e.url));
+        console.warn("[Reliability Dashboard] Sample event URLs:", events.slice(0, 3).map(e => ({
+            'event.url': e.url,
+            'raw_data.url': e.raw_data?.url,
+            'raw_data.type': e.raw_data?.type
+        })));
         console.warn("[Reliability Dashboard] Page paths extracted:", Array.from(pagePathDebug.entries()));
         
         // Check if raw_data has activities at all
@@ -113,16 +128,29 @@ window.drawReliabilityDashboard = function(events) {
         for (const event of events.slice(0, 5)) {
             if (event.raw_data?.activities?.length > 0) {
                 console.log("[Reliability Dashboard] Sample activities from event:", {
-                    url: event.url,
-                    activitiesCount: event.raw_data.activities.length,
-                    activityTypes: event.raw_data.activities.map(a => a.type)
+                    'event.raw_data.url': event.raw_data.url,
+                    'activity count': event.raw_data.activities.length,
+                    'activity types': event.raw_data.activities.map(a => a.type)
                 });
             }
         }
     } else {
-        console.log("[Reliability Dashboard] Normalized failures:", normalizedFailures.length);
-        console.log("[Reliability Dashboard] Failures by type:", Array.from(failuresByType.entries()));
-        console.log("[Reliability Dashboard] Failures by page:", Array.from(failuresByPage.entries()));
+        console.log("[Reliability Dashboard] ✓ Normalized failures:", normalizedFailures.length);
+        console.log("[Reliability Dashboard] ✓ Failures by type:", Array.from(failuresByType.entries()));
+        console.log("[Reliability Dashboard] ✓ Failures by page:", Array.from(failuresByPage.entries()));
+        console.log("[Reliability Dashboard] ✓ Unique pages detected:", failuresByPage.size);
+        
+        // Sample normalized records showing pagePath vs target separation
+        console.log("[Reliability Dashboard] Sample normalized failures (pagePath vs target):");
+        for (const failure of normalizedFailures.slice(0, 5)) {
+            console.log({
+                'pagePath (where failure happened)': failure.pagePath,
+                'target (what failed)': failure.target,
+                'failureType': failure.failureType,
+                'sourceKind': failure.sourceKind,
+                'sourceEventType': failure.sourceEventType
+            });
+        }
     }
 
     // Draw charts if data exists
@@ -184,40 +212,47 @@ function normalizeActivity(activity, pagePath, timestamp) {
     if (type === 'runtime_error') {
         return {
             timestamp: activity.timestamp || timestamp,
-            pagePath: pagePath,
+            pagePath: pagePath,                              // Page where error occurred
             failureType: 'Runtime JS Error',
-            target: activity.filename || 'unknown',
+            target: activity.filename || 'unknown',          // File that errored
             statusCode: null,
             message: activity.message || '',
             errorType: activity.errorType || 'Error',
-            sourceEventType: 'runtime_error'
+            sourceEventType: 'runtime_error',
+            sourceKind: 'RuntimeJS'                          // Optional: source classification
         };
     }
 
     if (type === 'broken_asset') {
         return {
             timestamp: activity.timestamp || timestamp,
-            pagePath: pagePath,
+            pagePath: pagePath,                              // Page where asset was requested
             failureType: 'Broken Asset',
-            target: activity.url || 'unknown',
+            target: activity.url || 'unknown',               // Asset URL that failed
             resourceType: activity.resourceType || 'unknown',
             statusCode: activity.statusCode || 0,
             message: `Failed to load ${activity.resourceType || 'asset'}`,
-            sourceEventType: 'broken_asset'
+            sourceEventType: 'broken_asset',
+            sourceKind: 'Asset'                              // Optional: source classification
         };
     }
 
     if (type === 'api_failure') {
-        const failureType = activity.failureType === '404_not_found' ? '404 Not Found' : 'API Failure';
+        // Keep API 404s as "404 Not Found" - do not reclassify as "API Failure"
+        const failureType = activity.failureType === '404_not_found' 
+            ? '404 Not Found' 
+            : 'API Failure';
+        
         return {
             timestamp: activity.timestamp || timestamp,
-            pagePath: pagePath,
+            pagePath: pagePath,                              // Page where API was called
             failureType: failureType,
-            target: activity.url || 'unknown',
+            target: activity.url || 'unknown',               // API endpoint that failed
             method: activity.method || 'GET',
             statusCode: activity.statusCode || 0,
             message: activity.statusText || 'API Request Failed',
-            sourceEventType: 'api_failure'
+            sourceEventType: 'api_failure',
+            sourceKind: 'API'                                // Optional: source classification
         };
     }
 
