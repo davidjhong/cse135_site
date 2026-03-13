@@ -30,7 +30,7 @@ switch ($method) {
             $stmt->execute([$id]);
             echo json_encode($stmt->fetch(PDO::FETCH_ASSOC));
         } else {
-            $stmt = $pdo->query("SELECT id, session_id, event_type, created_at, raw_data FROM events ORDER BY created_at DESC LIMIT 100");
+            $stmt = $pdo->query("SELECT id, session_id, event_type, created_at, raw_data FROM events ORDER BY created_at DESC LIMIT 10000");
             echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
         }
         break;

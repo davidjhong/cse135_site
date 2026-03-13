@@ -15,10 +15,9 @@ document.addEventListener('analyticsDataLoaded', (e) => {
 });
 
 function drawDeviceCategoryChart(events) {
-    const chartContainer = d3.select("#activity-chart"); // Reusing the second container
+    const chartContainer = d3.select("#activity-chart"); 
     chartContainer.html("");
-    chartContainer.style("position", "relative");
-
+    
     // 1. Extract unique visitors (sessions) and determine device category
     const sessions = new Map();
     events.filter(d => d.event_type === 'page_load' && d.raw_data?.static).forEach(ev => {
@@ -65,10 +64,10 @@ function drawDeviceCategoryChart(events) {
 
     // 3. Colors & Generators
     const colorMap = {
-        "mobile": "#61a9f3", // Light blue
-        "tablet": "#317fcf", // Dark blue
-        "desktop": "#ef7b05", // Orange
-        "television": "#f7c844" // Yellow
+        "mobile": "#61a9f3", 
+        "tablet": "#317fcf", 
+        "desktop": "#ef7b05", 
+        "television": "#f7c844" 
     };
 
     const pie = d3.pie().value(d => d.value).sort(null);
@@ -77,7 +76,7 @@ function drawDeviceCategoryChart(events) {
 
     // Tooltip
     const tooltip = chartContainer.append("div")
-        .attr("class", "chart-tooltip device-tooltip");
+        .attr("class", "chart-tooltip");
 
     // 4. Draw Slices
     svg.selectAll('allSlices')
@@ -86,8 +85,7 @@ function drawDeviceCategoryChart(events) {
         .append('path')
         .attr('d', arc)
         .attr('fill', d => colorMap[d.data.key])
-        .attr("stroke", "white")
-        .style("stroke-width", "2px")
+        .attr('class', 'pie-slice')
         .on("mouseenter", function (event, d) {
             d3.select(this).style("opacity", 0.8);
             const percent = ((d.data.value / totalVisitors) * 100).toFixed(2);
@@ -105,19 +103,17 @@ function drawDeviceCategoryChart(events) {
             tooltip.style("opacity", 0);
         });
 
-    // 5. Center Text (1500 Visitors)
+    // 5. Center Text
     svg.append("text")
         .attr("text-anchor", "middle")
         .attr("dy", "-0.1em")
-        .style("font-size", "36px")
-        .style("fill", "#8fa2b4")
+        .attr("class", "pie-center-number")
         .text(totalVisitors);
 
     svg.append("text")
         .attr("text-anchor", "middle")
         .attr("dy", "1.5em")
-        .style("font-size", "14px")
-        .style("fill", "#6c757d")
+        .attr("class", "pie-center-label")
         .text("Visitors");
 
     // 6. External Lines & Labels
@@ -125,9 +121,7 @@ function drawDeviceCategoryChart(events) {
         .data(pie(data))
         .enter()
         .append('polyline')
-        .attr("stroke", "#ccc")
-        .style("fill", "none")
-        .attr("stroke-width", 1)
+        .attr("class", "pie-polyline")
         .attr('points', function(d) {
             const posA = arc.centroid(d);
             const posB = outerArc.centroid(d);
@@ -152,9 +146,7 @@ function drawDeviceCategoryChart(events) {
             const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2;
             return (midangle < Math.PI ? 'start' : 'end');
         })
-        .style("font-size", "12px")
-        .style("fill", "#555")
-        .style("font-weight", "bold");
+        .attr("class", "pie-label");
 
     // 7. Legend
     const legend = svg.append("g")
@@ -166,59 +158,56 @@ function drawDeviceCategoryChart(events) {
     legendKeys.forEach(key => {
         const item = legend.append("g").attr("transform", `translate(${legendOffset}, 0)`);
         item.append("rect").attr("width", 12).attr("height", 12).attr("fill", colorMap[key]);
-        item.append("text").attr("x", 18).attr("y", 10).text(key).style("font-size", "13px").style("fill", "#6c757d");
-        legendOffset += 70 + (key.length * 5); // Dynamic spacing
+        item.append("text")
+            .attr("x", 18)
+            .attr("y", 10)
+            .text(key)
+            .attr("class", "pie-legend-text");
+        legendOffset += 70 + (key.length * 5); 
     });
 }
 
 function drawVisitorTimelineChart(events) {
     const chartContainer = d3.select("#performance-chart");
     chartContainer.html("");
-    chartContainer.style("position", "relative");
 
-    // 1. Process data for Pageviews, Visitors, and New Visitors
     const dailyStats = new Map();
-    const sessionFirstDate = new Map();
+    const globalUsers = new Set();
+    const globalSessions = new Set();
 
-    events.forEach(ev => {
-        if (!ev.created_at) return;
-        const dateKey = ev.created_at.split(' ')[0];
-        if (!sessionFirstDate.has(ev.session_id) || dateKey < sessionFirstDate.get(ev.session_id)) {
-            sessionFirstDate.set(ev.session_id, dateKey);
-        }
-    });
-
+    // Aggregate daily Pageviews, Sessions, and Users
     events.filter(d => d.event_type === 'page_load').forEach(ev => {
         if (!ev.created_at) return;
         const dateKey = ev.created_at.split(' ')[0];
+        
+        // Legacy fallback: if user_id doesn't exist, use session_id
+        const uid = ev.raw_data?.user_id || ev.session_id; 
+        const sid = ev.session_id;
+
         if (!dailyStats.has(dateKey)) {
             dailyStats.set(dateKey, { 
                 date: new Date(dateKey + 'T00:00:00'), 
-                visitorsSet: new Set(),
+                usersSet: new Set(),
+                sessionsSet: new Set(),
                 pageviews: 0 
             });
         }
-        dailyStats.get(dateKey).visitorsSet.add(ev.session_id);
+        
+        dailyStats.get(dateKey).usersSet.add(uid);
+        dailyStats.get(dateKey).sessionsSet.add(sid);
         dailyStats.get(dateKey).pageviews++;
+
+        // Add to global sets for accurate title totals
+        globalUsers.add(uid);
+        globalSessions.add(sid);
     });
 
-    const data = Array.from(dailyStats.values()).map(stat => {
-        let newVisCount = 0;
-        const currentDateStr = stat.date.toISOString().split('T')[0];
-        
-        stat.visitorsSet.forEach(sid => {
-            if (sessionFirstDate.get(sid) === currentDateStr) {
-                newVisCount++;
-            }
-        });
-
-        return {
-            date: stat.date,
-            pageviews: stat.pageviews,
-            visitors: stat.visitorsSet.size,
-            newVisitors: newVisCount
-        };
-    }).sort((a, b) => a.date - b.date);
+    const data = Array.from(dailyStats.values()).map(stat => ({
+        date: stat.date,
+        pageviews: stat.pageviews,
+        sessions: stat.sessionsSet.size,
+        users: stat.usersSet.size
+    })).sort((a, b) => a.date - b.date);
 
     if (data.length === 0) {
         chartContainer.html('<p class="chart-empty-state">No timeline data available.</p>');
@@ -226,8 +215,6 @@ function drawVisitorTimelineChart(events) {
     }
 
     const totalViews = d3.sum(data, d => d.pageviews);
-    const totalVis = d3.sum(data, d => d.visitors);
-    const totalNew = d3.sum(data, d => d.newVisitors);
 
     // 2. Setup Dimensions
     const width = 560, height = 350;
@@ -239,10 +226,10 @@ function drawVisitorTimelineChart(events) {
         .attr("width", width).attr("height", height)
         .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // Top Title
+    // Top Title (Now mathematically perfect)
     chartContainer.insert("div", ":first-child")
         .attr("class", "chart-title")
-        .text(`Traffic Overview (${totalViews} Views / ${totalVis} Vis / ${totalNew} New)`);
+        .text(`Traffic Overview (${totalViews} Views / ${globalSessions.size} Visits / ${globalUsers.size} Users)`);
 
     // Dynamic Legend Area
     const legendDiv = chartContainer.append("div")
@@ -255,8 +242,8 @@ function drawVisitorTimelineChart(events) {
         legendDiv.html(`
             <span class="legend-date">${dateStr}</span>
             <span class="legend-item"><span class="legend-color legend-pv"></span> Pageviews: ${d.pageviews}</span>
-            <span class="legend-item"><span class="legend-color legend-vis"></span> Visitors: ${d.visitors}</span>
-            <span class="legend-item"><span class="legend-color legend-new"></span> New Visitors: ${d.newVisitors}</span>
+            <span class="legend-item"><span class="legend-color legend-vis"></span> Visits: ${d.sessions}</span>
+            <span class="legend-item"><span class="legend-color legend-new"></span> Unique Users: ${d.users}</span>
         `);
     };
     updateLegend(data[data.length - 1]);
@@ -264,61 +251,34 @@ function drawVisitorTimelineChart(events) {
     const tooltip = chartContainer.append("div")
         .attr("class", "chart-tooltip");
 
-    // 3. Scales (Y-axis now scales based on Pageviews, since it's the largest number)
+    // 3. Scales
     const x = d3.scaleTime().domain(d3.extent(data, d => d.date)).range([0, innerWidth]);
     const yMax = Math.max(d3.max(data, d => d.pageviews) || 5, 5);
     const y = d3.scaleLinear().domain([0, yMax]).range([innerHeight, 0]);
 
     // 4. Area Generators
     const areaPageviews = d3.area().x(d => x(d.date)).y0(innerHeight).y1(d => y(d.pageviews)).curve(d3.curveMonotoneX);
-    const areaVisitors = d3.area().x(d => x(d.date)).y0(innerHeight).y1(d => y(d.visitors)).curve(d3.curveMonotoneX);
-    const areaNewVisitors = d3.area().x(d => x(d.date)).y0(innerHeight).y1(d => y(d.newVisitors)).curve(d3.curveMonotoneX);
+    const areaSessions = d3.area().x(d => x(d.date)).y0(innerHeight).y1(d => y(d.sessions)).curve(d3.curveMonotoneX);
+    const areaUsers = d3.area().x(d => x(d.date)).y0(innerHeight).y1(d => y(d.users)).curve(d3.curveMonotoneX);
 
-    // Draw Areas (Back to Front: Pageviews -> Visitors -> New Visitors)
-    svg.append("path")
-        .datum(data)
-        .attr("class", "area-pageviews")
-        .attr("d", areaPageviews);
-
-    svg.append("path")
-        .datum(data)
-        .attr("class", "area-visitors")
-        .attr("d", areaVisitors);
-
-    svg.append("path")
-        .datum(data)
-        .attr("class", "area-new-visitors")
-        .attr("d", areaNewVisitors);
+    // Draw Areas
+    svg.append("path").datum(data).attr("class", "area-pageviews").attr("d", areaPageviews);
+    svg.append("path").datum(data).attr("class", "area-visitors").attr("d", areaSessions); // Light Blue = Visits
+    svg.append("path").datum(data).attr("class", "area-new-visitors").attr("d", areaUsers); // Dark Blue = Unique Users
 
     // 5. Axes
-    svg.append("g")
-        .attr("transform", `translate(0,${innerHeight})`)
-        .attr("class", "chart-axis")
-        .call(d3.axisBottom(x).ticks(5).tickFormat(d3.timeFormat("%b %d")));
-
-    svg.append("g")
-        .attr("class", "chart-axis")
-        .call(d3.axisLeft(y).ticks(5));
+    svg.append("g").attr("transform", `translate(0,${innerHeight})`).attr("class", "chart-axis").call(d3.axisBottom(x).ticks(5).tickFormat(d3.timeFormat("%b %d")));
+    svg.append("g").attr("class", "chart-axis").call(d3.axisLeft(y).ticks(5));
 
     // 6. Interactive Hover Line
-    const hoverLine = svg.append("line")
-        .attr("class", "hover-line")
-        .attr("y1", 0).attr("y2", innerHeight);
-
+    const hoverLine = svg.append("line").attr("class", "hover-line").attr("y1", 0).attr("y2", innerHeight);
     const bisectDate = d3.bisector(d => d.date).left;
 
     svg.append("rect")
         .attr("width", innerWidth).attr("height", innerHeight)
         .attr("fill", "none").attr("pointer-events", "all")
-        .on("mouseover", () => {
-            hoverLine.style("opacity", 1);
-            tooltip.style("opacity", 1);
-        })
-        .on("mouseout", () => {
-            hoverLine.style("opacity", 0);
-            tooltip.style("opacity", 0);
-            updateLegend(data[data.length - 1]);
-        })
+        .on("mouseover", () => { hoverLine.style("opacity", 1); tooltip.style("opacity", 1); })
+        .on("mouseout", () => { hoverLine.style("opacity", 0); tooltip.style("opacity", 0); updateLegend(data[data.length - 1]); })
         .on("mousemove", (event) => {
             const x0 = x.invert(d3.pointer(event)[0]);
             const i = bisectDate(data, x0, 1);
@@ -337,8 +297,8 @@ function drawVisitorTimelineChart(events) {
             tooltip.html(`
                 <div class="tooltip-header">${dateStr}</div>
                 Pageviews: ${d.pageviews}<br>
-                Visitors: ${d.visitors}<br>
-                New Visitors: ${d.newVisitors}
+                Visits: ${d.sessions}<br>
+                Unique Users: ${d.users}
             `);
 
             let tipX = cx + margin.left + 15;
