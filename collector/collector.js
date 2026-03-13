@@ -102,10 +102,154 @@
         }); 
     }
 
-    // Errors
+    // ==========================================
+    // FAILURE TRACKING
+    // ==========================================
+
+    // 1. Runtime JS Errors
     window.addEventListener('error', (e) => {
-        recordActivity('error', { message: e.message, line: e.lineno, col: e.colno });
-    });
+        // Distinguish between runtime errors and resource load errors
+        if (e instanceof ErrorEvent) {
+            // Runtime JavaScript error
+            recordActivity('runtime_error', { 
+                message: e.message, 
+                line: e.lineno, 
+                col: e.colno,
+                filename: e.filename,
+                errorType: e.error?.name || 'Unknown'
+            });
+        } else if (e.target && e.target !== window) {
+            // Resource load error (image, script, stylesheet, etc.)
+            const target = e.target;
+            const resourceType = target.tagName?.toLowerCase() || 'unknown';
+            const src = target.src || target.href || '';
+            const statusCode = target.status || 0;
+            
+            recordActivity('broken_asset', {
+                resourceType: resourceType,
+                url: src,
+                statusCode: statusCode
+            });
+        }
+    }, true); // Use capture phase to catch resource errors
+
+    // 2. Broken Assets - Explicit tracking for resource load failures
+    function trackResourceLoadFailure(element, resourceType) {
+        const src = element.src || element.href || '';
+        if (src) {
+            recordActivity('broken_asset', {
+                resourceType: resourceType,
+                url: src,
+                statusCode: 0  // 0 indicates resource didn't load
+            });
+        }
+    }
+
+    // Images
+    document.addEventListener('error', (e) => {
+        if (e.target && e.target.tagName === 'IMG') {
+            trackResourceLoadFailure(e.target, 'img');
+        }
+    }, true);
+
+    // Scripts (via onerror)
+    if (document.currentScript) {
+        const scriptElements = document.querySelectorAll('script');
+        scriptElements.forEach(script => {
+            script.addEventListener('error', (e) => {
+                trackResourceLoadFailure(e.target, 'script');
+            });
+        });
+    }
+
+    // 3. API Failures (Fetch interception)
+    const originalFetch = window.fetch;
+    window.fetch = function(...args) {
+        const resource = args[0] instanceof Request ? args[0].url : args[0];
+        const method = (args[1] && args[1].method) || 'GET';
+        
+        return originalFetch.apply(this, args)
+            .then(response => {
+                // Log non-2xx responses
+                if (!response.ok) {
+                    recordActivity('api_failure', {
+                        url: response.url,
+                        method: method,
+                        statusCode: response.status,
+                        statusText: response.statusText,
+                        failureType: response.status === 404 ? '404_not_found' : 'api_failure'
+                    });
+                }
+                return response;
+            })
+            .catch(error => {
+                // Network error or other fetch failure
+                recordActivity('api_failure', {
+                    url: resource,
+                    method: method,
+                    statusCode: 0,
+                    statusText: error.message || 'Network Error',
+                    failureType: 'api_failure'
+                });
+                throw error;
+            });
+    };
+
+    // 4. XMLHttpRequest interception
+    const originalXHR = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function(method, url) {
+        this._method = method;
+        this._url = url;
+        
+        const originalOnReadyStateChange = this.onreadystatechange;
+        this.onreadystatechange = function() {
+            if (this.readyState === 4) {  // Complete
+                if (!this.ok && this.status !== 0) {  // 0 = hasn't loaded or error occurred
+                    recordActivity('api_failure', {
+                        url: this._url,
+                        method: this._method,
+                        statusCode: this.status,
+                        statusText: this.statusText,
+                        failureType: this.status === 404 ? '404_not_found' : 'api_failure'
+                    });
+                }
+            }
+            if (originalOnReadyStateChange) {
+                originalOnReadyStateChange.call(this);
+            }
+        };
+
+        return originalXHR.call(this, method, url);
+    };
+
+    // Fallback for direct addEventListener on XHR
+    const originalAddEventListener = XMLHttpRequest.prototype.addEventListener;
+    XMLHttpRequest.prototype.addEventListener = function(event, handler) {
+        if (event === 'error' || event === 'load') {
+            const wrappedHandler = function(e) {
+                if (event === 'error') {
+                    recordActivity('api_failure', {
+                        url: this._url,
+                        method: this._method,
+                        statusCode: 0,
+                        statusText: 'Network Error',
+                        failureType: 'api_failure'
+                    });
+                } else if (event === 'load' && this.status !== 0 && !this.ok) {
+                    recordActivity('api_failure', {
+                        url: this._url,
+                        method: this._method,
+                        statusCode: this.status,
+                        statusText: this.statusText,
+                        failureType: this.status === 404 ? '404_not_found' : 'api_failure'
+                    });
+                }
+                return handler.call(this, e);
+            };
+            return originalAddEventListener.call(this, event, wrappedHandler);
+        }
+        return originalAddEventListener.call(this, event, handler);
+    };
 
     // Clicks
     window.addEventListener('mousedown', (e) => {
@@ -150,14 +294,22 @@
             payload.activities = activityQueue.splice(0, activityQueue.length);
         }
 
-        fetch(ENDPOINT, {
-            method: 'POST', 
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload),
-            keepalive: true
-        }).catch((err) => console.error("Analytics Delivery Error:", err));
+        // Use an alternative endpoint that doesn't trigger our own fetch monitoring
+        // to prevent recursive failure tracking
+        try {
+            const beacon = navigator.sendBeacon ? navigator.sendBeacon : null;
+            if (beacon) {
+                beacon(ENDPOINT, JSON.stringify(payload));
+            } else {
+                // Fallback for unsupported browsers, but use XMLHttpRequest to avoid recursive fetch
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', ENDPOINT, true);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.send(JSON.stringify(payload));
+            }
+        } catch (err) {
+            console.error("Analytics Delivery Error:", err);
+        }
     }
 
     // load

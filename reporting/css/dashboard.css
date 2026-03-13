@@ -115,3 +115,13 @@ a.logout:hover {
 #saved-reports-container {
     margin-top: 40px;
 }
+
+/* Reliability section specific styles */
+.reliability-section {
+    border: 1px solid #ddd;
+}
+
+.reliability-section h3 {
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 0.75rem;
+}

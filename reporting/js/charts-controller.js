@@ -29,4 +29,8 @@ document.addEventListener('analyticsDataLoaded', (e) => {
     if (document.getElementById("error-rate-chart") && typeof window.drawErrorRateChart === 'function') {
         window.drawErrorRateChart(events);
     }
+
+    if (document.getElementById("reliability-type-chart") && typeof window.drawReliabilityDashboard === 'function') {
+        window.drawReliabilityDashboard(events);
+    }
 });

@@ -82,17 +82,6 @@ function canView($section, $allowedSections) {
     <?php endif; ?>
 
     <div class="lower-charts-grid">
-        <?php if (canView('performance', $allowedSections)): ?>
-        <div class="chart-card">
-            <div id="error-rate-chart" class="chart-panel"></div>
-            <?php if ($userRole !== 'viewer'): ?>
-            <div class="report-input-area">
-                <textarea id="error-rate-comment" placeholder="Add Error Rate Analysis..."></textarea>
-                <button onclick="saveReport('performance', 'Error Rate Chart', 'error-rate-comment')" class="save-btn">Save Error Rate Report</button>
-            </div>
-            <?php endif; ?>
-        </div>
-        <?php endif; ?>
 
         <?php if (canView('behavior', $allowedSections)): ?>
         <div class="chart-card">
@@ -116,6 +105,30 @@ function canView($section, $allowedSections) {
         <?php endif; ?>
     </div>
     
+    <?php if (canView('reliability', $allowedSections) || canView('all', $allowedSections)): ?>
+    <div class="reliability-section">
+        <h3>Failure / Reliability Analytics</h3>
+        <p class="reliability-subtitle">Track broken assets, failed API requests, 404s, and runtime errors impacting site reliability</p>
+        
+        <div class="reliability-charts-grid">
+            <div class="reliability-row-top">
+                <div id="reliability-type-chart" class="chart-panel reliability-chart"></div>
+                <div id="reliability-page-chart" class="chart-panel reliability-chart"></div>
+            </div>
+            
+            <div class="reliability-row-bottom">
+                <div id="reliability-urls-chart" class="chart-panel reliability-chart"></div>
+                <?php if ($userRole !== 'viewer'): ?>
+                <div class="report-input-area">
+                    <textarea id="reliability-comment" placeholder="Add Failure / Reliability Analysis..."></textarea>
+                    <button onclick="saveReport('reliability', 'Failure Analysis', 'reliability-comment')" class="save-btn">Save Reliability Report</button>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+    
     <?php if ($userRole === 'viewer' || $userRole === 'super_admin'): ?>
     <div id="saved-reports-container">
         <h3>Saved Analyst Reports</h3>
@@ -126,6 +139,7 @@ function canView($section, $allowedSections) {
     <script src="js/dashboard.js"></script>
     <script src="js/charts-performance.js"></script>
     <script src="js/charts-behavior.js"></script>
+    <script src="js/charts-reliability.js"></script>
     <script src="js/charts-controller.js"></script>
 </body>
 </html>

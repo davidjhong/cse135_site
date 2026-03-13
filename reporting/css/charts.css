@@ -266,3 +266,76 @@ svg {
 .pie-polyline { stroke: #ccc; fill: none; stroke-width: 1px; }
 .pie-label { font-size: 12px; fill: #555; font-weight: bold; }
 .pie-legend-text { font-size: 13px; fill: #6c757d; }
+
+/* === Reliability / Failure Analytics Section === */
+.reliability-section {
+    margin-top: 2rem;
+    background: white;
+    padding: 2rem 1.5rem 1.5rem 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.reliability-section h3 {
+    margin-top: 0;
+    color: #333;
+    font-size: 22px;
+    margin-bottom: 0.5rem;
+}
+
+.reliability-subtitle {
+    color: #6c757d;
+    font-size: 14px;
+    margin: 0 0 1.5rem 0;
+    font-style: italic;
+}
+
+.reliability-charts-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    margin-top: 1.5rem;
+}
+
+.reliability-row-top {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.reliability-row-bottom {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    overflow: hidden;
+}
+
+.reliability-chart {
+    position: relative;
+    overflow: visible;
+    min-height: auto;
+    background: #fafbfc;
+    padding: 1rem;
+    border-radius: 6px;
+    border: 1px solid #e8eef5;
+}
+
+/* Responsive: Stack charts on smaller screens */
+@media (max-width: 1024px) {
+    .reliability-row-top {
+        grid-template-columns: 1fr;
+        gap: 0;
+        margin-bottom: 20px;
+    }
+
+    .reliability-row-bottom {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .reliability-chart {
+        margin-bottom: 20px;
+    }
+}
