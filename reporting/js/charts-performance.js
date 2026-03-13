@@ -57,10 +57,6 @@ window.drawPerformanceDashboard = function(events) {
     drawInsightPanel(loadTimesByPath, loadTimesByDate, getPercentile, SLOW_THRESHOLD);
 };
 
-
-// ==========================================
-// Performance Band Thresholds
-// ==========================================
 const PERF_BANDS = {
     excellent: { max: 500, color: '#28a745', label: 'Excellent' },
     good: { max: 1500, color: '#ffc107', label: 'Good' },
@@ -207,7 +203,7 @@ function drawTrendChart(dataByDate, getP) {
 // ==========================================
 function drawPageComparisonChart(dataByPath, getP) {
     const container = d3.select("#perf-bar-chart");
-    container.html("");
+    container.html("").style("position", "relative");   
 
     const pageData = Array.from(dataByPath.entries())
         .map(([path, times]) => ({
@@ -235,7 +231,15 @@ function drawPageComparisonChart(dataByPath, getP) {
     const x = d3.scaleLinear().domain([0, d3.max(pageData, d => d.slow) * 1.1]).range([0, innerW]);
     const y = d3.scaleBand().domain(pageData.map(d => d.path)).range([0, innerH]).padding(0.25);
 
-    const tooltip = container.append("div").attr("class", "chart-tooltip");
+    const tooltip = container.append("div")
+        .attr("class", "chart-tooltip")
+        .style("opacity", 0)
+        .style("position", "absolute")
+        .style("pointer-events", "none")
+        .style("z-index", "100");.on("mousemove", (event) => {
+            const [xPos, yPos] = d3.pointer(event, container.node());
+            tooltip.style("left", (xPos + 15) + "px").style("top", (yPos - 28) + "px");
+        })
 
     // Grouped bars
     const barG = svg.selectAll("g.page-group").data(pageData).join("g").attr("class", "page-group")
@@ -265,7 +269,8 @@ function drawPageComparisonChart(dataByPath, getP) {
             `);
         })
         .on("mousemove", (event) => {
-            tooltip.style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 28) + "px");
+            const [xPos, yPos] = d3.pointer(event, container.node());
+            tooltip.style("left", (xPos + 15) + "px").style("top", (yPos - 28) + "px");
         })
         .on("mouseout", function() { d3.select(this).attr("opacity", 0.85); tooltip.style("opacity", 0); });
 
@@ -291,7 +296,8 @@ function drawPageComparisonChart(dataByPath, getP) {
             `);
         })
         .on("mousemove", (event) => {
-            tooltip.style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 28) + "px");
+            const [xPos, yPos] = d3.pointer(event, container.node());
+            tooltip.style("left", (xPos + 15) + "px").style("top", (yPos - 28) + "px");
         })
         .on("mouseout", function() { d3.select(this).attr("opacity", 0.85); tooltip.style("opacity", 0); });
 
