@@ -22,8 +22,8 @@ document.addEventListener('analyticsDataLoaded', (e) => {
         window.drawDeviceCategoryChart(events);
     }
 
-    if (document.getElementById("loadtime-chart") && typeof window.drawLoadTimeChart === 'function') {
-        window.drawLoadTimeChart(events);
+    if (document.getElementById("perf-trend-chart") && typeof window.drawPerformanceDashboard === 'function') {
+        window.drawPerformanceDashboard(events);
     }
 
     if (document.getElementById("error-rate-chart") && typeof window.drawErrorRateChart === 'function') {

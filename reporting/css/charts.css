@@ -1,11 +1,3 @@
-.charts-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    margin-top: 16px;
-    margin-bottom: 20px;
-}
-
 .chart-card {
     background: white;
     padding: 1.5rem;
@@ -13,14 +5,47 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.chart-stack {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-}
-
 .chart-panel {
     position: relative;
+}
+
+/* === Performance: 3-chart horizontal box === */
+.perf-charts-box {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.perf-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 8px;
+}
+
+/* === Lower section: error rate + behavior side by side === */
+.lower-charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+/* === Behavior: 2 charts + 2 comment inputs side by side === */
+.behavior-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 8px;
+}
+
+.behavior-report-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 8px;
 }
 
 svg {

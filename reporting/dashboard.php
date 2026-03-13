@@ -63,51 +63,56 @@ function canView($section, $allowedSections) {
     </div>
     <?php endif; ?>
 
-    <div class="charts-grid">
+    <?php if (canView('performance', $allowedSections)): ?>
+    <div class="perf-charts-box">
+        <div class="perf-row">
+            <div id="perf-trend-chart" class="chart-panel"></div>
+            <div id="perf-bar-chart" class="chart-panel"></div>
+            <div id="perf-box-plot" class="chart-panel"></div>
+        </div>
+        <?php if ($userRole !== 'viewer'): ?>
+        <div class="report-input-area">
+            <textarea id="loadtime-comment" placeholder="Add Load Time Analysis..."></textarea>
+            <button onclick="saveReport('performance', 'Load Time Charts', 'loadtime-comment')" class="save-btn">Save Load Time Report</button>
+        </div>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
+
+    <div class="lower-charts-grid">
         <?php if (canView('performance', $allowedSections)): ?>
         <div class="chart-card">
-            <div class="chart-stack">
-                <div id="loadtime-chart" class="chart-panel"></div>
-                <?php if ($userRole !== 'viewer'): ?>
-                <div class="report-input-area">
-                    <textarea id="loadtime-comment" placeholder="Add Load Time Analysis..."></textarea>
-                    <button onclick="saveReport('performance', 'Load Time Chart', 'loadtime-comment')" class="save-btn">Save Load Time Report</button>
-                </div>
-                <?php endif; ?>
-
-                <div id="error-rate-chart" class="chart-panel"></div>
-                <?php if ($userRole !== 'viewer'): ?>
-                <div class="report-input-area">
-                    <textarea id="error-rate-comment" placeholder="Add Error Rate Analysis..."></textarea>
-                    <button onclick="saveReport('performance', 'Error Rate Chart', 'error-rate-comment')" class="save-btn">Save Error Rate Report</button>
-                </div>
-                <?php endif; ?>
+            <div id="error-rate-chart" class="chart-panel"></div>
+            <?php if ($userRole !== 'viewer'): ?>
+            <div class="report-input-area">
+                <textarea id="error-rate-comment" placeholder="Add Error Rate Analysis..."></textarea>
+                <button onclick="saveReport('performance', 'Error Rate Chart', 'error-rate-comment')" class="save-btn">Save Error Rate Report</button>
             </div>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
 
         <?php if (canView('behavior', $allowedSections)): ?>
         <div class="chart-card">
-            <div class="chart-stack">
+            <div class="behavior-row">
                 <div id="visitor-timeline-chart" class="chart-panel"></div>
-                <?php if ($userRole !== 'viewer'): ?>
+                <div id="device-category-chart" class="chart-panel"></div>
+            </div>
+            <?php if ($userRole !== 'viewer'): ?>
+            <div class="behavior-report-row">
                 <div class="report-input-area">
                     <textarea id="visitor-timeline-comment" placeholder="Add Visitor Timeline Analysis..."></textarea>
                     <button onclick="saveReport('behavior', 'Visitor Timeline Chart', 'visitor-timeline-comment')" class="save-btn">Save Visitor Timeline Report</button>
                 </div>
-                <?php endif; ?>
-
-                <div id="device-category-chart" class="chart-panel"></div>
-                <?php if ($userRole !== 'viewer'): ?>
                 <div class="report-input-area">
                     <textarea id="device-category-comment" placeholder="Add Device Category Analysis..."></textarea>
                     <button onclick="saveReport('behavior', 'Device Category Pie Chart', 'device-category-comment')" class="save-btn">Save Device Category Report</button>
                 </div>
-                <?php endif; ?>
             </div>
+            <?php endif; ?>
         </div>
-        <?php endif; ?> 
-    </div>  
+        <?php endif; ?>
+    </div>
     
     <?php if ($userRole === 'viewer' || $userRole === 'super_admin'): ?>
     <div id="saved-reports-container">
