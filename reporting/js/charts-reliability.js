@@ -668,11 +668,11 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures, colorMap) {
 
     container.insert("div", ":first-child")
         .attr("class", "chart-title")
-        .text("Top Broken URLs / Assets");
+        .text("Top Failure Targets");
     
     container.insert("p", "div + div")
         .attr("class", "chart-subtitle")
-        .html(`Top ${topUrls.length} most frequently broken resources`);
+        .html(`Resources, endpoints, and files most frequently involved in client failures`);
 
     const x = d3.scaleLinear()
         .domain([0, d3.max(topUrls, d => d.count) * 1.1])
@@ -723,10 +723,10 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures, colorMap) {
         .style("cursor", "pointer")
         .attr("opacity", 0.85)
         .on("mouseover", function(event, d) {
-            d3.select(this).attr("opacity", 1);
+            d3.select(this).attr("stroke", "#333").attr("stroke-width", "2px").attr("opacity", 1);
             const failureType = d3.select(this.parentNode).datum().key;
             const count = Math.round(d[1] - d[0]);
-            const urlData = urlStackData[d.index];
+            const urlData = d.data;  // Access original data from stacked structure
             const percentage = ((count / urlData.total) * 100).toFixed(1);
             
             // Build type breakdown
@@ -745,10 +745,15 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures, colorMap) {
                 : `Page: ${Array.from(urlData.pages)[0] || '/'}`;
 
             tooltip.style("opacity", 1)
+                .style("background", "#1a1a1a")
+                .style("border", "1px solid #444")
+                .style("border-radius", "4px")
+                .style("padding", "10px")
+                .style("color", "#fff")
                 .html(`<div style="font-weight: bold; margin-bottom: 6px; word-break: break-word; border-bottom: 1px solid #666; padding-bottom: 4px;">
                            ${urlData.url}
                        </div>
-                       <div style="margin-bottom: 6px; font-size: 12px; color: #0099cc; font-weight: 600;">
+                       <div style="margin-bottom: 6px; font-size: 12px; color: #66ccff; font-weight: 600;">
                            Total Failures: ${urlData.total}
                        </div>
                        <div style="margin-bottom: 4px; font-size: 11px;">
@@ -764,7 +769,7 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures, colorMap) {
                 .style("top", (yPos - 28) + "px");
         })
         .on("mouseout", function() {
-            d3.select(this).attr("opacity", 0.85);
+            d3.select(this).attr("stroke", "white").attr("stroke-width", "1px").attr("opacity", 0.85);
             tooltip.style("opacity", 0);
         });
 

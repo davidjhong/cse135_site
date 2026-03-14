@@ -1,4 +1,75 @@
 window.drawPerformanceDashboard = function(events) {
+    // ==========================================
+    // PAGE NORMALIZATION FOR LOAD-TIME ANALYTICS
+    // ==========================================
+    
+    // Valid site pages that should appear as distinct buckets
+    const VALID_PAGES = new Set([
+        '/', 
+        '/index.html', 
+        '/index.php',
+        '/products.html',
+        '/products',
+        '/product-detail.html',
+        '/product-detail',
+        '/checkout.html',
+        '/checkout',
+        '/404.html',
+        '/test/index.html',
+        '/test/products.html',
+        '/test/product-detail.html',
+        '/test/checkout.html',
+        '/test/liquidation.html',
+        '/test/404.html'
+    ]);
+
+    // Map valid paths to display labels
+    const PAGE_LABELS = {
+        '/': 'Home',
+        '/index.html': 'Home',
+        '/index.php': 'Home',
+        '/products.html': 'Products',
+        '/products': 'Products',
+        '/product-detail.html': 'Product Detail',
+        '/product-detail': 'Product Detail',
+        '/checkout.html': 'Checkout',
+        '/checkout': 'Checkout',
+        '/404.html': '404',
+        '/test/index.html': 'Test Home',
+        '/test/products.html': 'Test Products',
+        '/test/product-detail.html': 'Test Product Detail',
+        '/test/checkout.html': 'Test Checkout',
+        '/test/liquidation.html': 'Test Liquidation',
+        '/test/404.html': 'Test 404'
+    };
+
+    // Normalize raw path to page bucket
+    function normalizePagePath(rawPath) {
+        if (!rawPath) return '404';
+        
+        // Check if exact path is valid
+        if (VALID_PAGES.has(rawPath)) {
+            return PAGE_LABELS[rawPath] || rawPath;
+        }
+        
+        // Check if path without trailing slash is valid
+        const trimmedPath = rawPath.replace(/\/$/, '');
+        if (trimmedPath !== rawPath && VALID_PAGES.has(trimmedPath)) {
+            return PAGE_LABELS[trimmedPath] || trimmedPath;
+        }
+        
+        // Check if path starts with a valid test route
+        if (rawPath.startsWith('/test/')) {
+            const testRoute = rawPath.match(/^\/test\/[^?#]*/)[0];
+            if (VALID_PAGES.has(testRoute)) {
+                return PAGE_LABELS[testRoute] || testRoute;
+            }
+        }
+        
+        // If path doesn't match a known valid route, normalize to 404
+        return '404';
+    }
+
     const rawData = [];
     const loadTimesByPath = new Map();
     const loadTimesByDate = new Map();
@@ -10,17 +81,16 @@ window.drawPerformanceDashboard = function(events) {
         const dateStr = ev.created_at.split(' ')[0];
         const loadTime = ev.raw_data.performance.totalLoadTime;
 
-        let pathName = 'Unknown';
+        let pathName = '404';
         try {
             const urlObj = new URL(ev.raw_data.url);
             let rawPath = urlObj.pathname;
             
-            if (rawPath === '/' || rawPath === '/index.html' || rawPath === '/index.php') pathName = 'Home';
-            else if (rawPath.includes('checkout')) pathName = 'Checkout';
-            else if (rawPath.includes('product-detail')) pathName = 'Product Detail';
-            else if (rawPath.includes('products')) pathName = 'Products';
-            else pathName = rawPath.replace(/^\//, '');
-        } catch (e) {}
+            // Normalize raw path to valid page bucket
+            pathName = normalizePagePath(rawPath);
+        } catch (e) {
+            pathName = '404';
+        }
 
         rawData.push({ date: dateStr, path: pathName, time: loadTime });
 
@@ -34,6 +104,19 @@ window.drawPerformanceDashboard = function(events) {
     if (rawData.length === 0) {
         d3.select("#perf-trend-chart").html('<p class="chart-empty-state">No performance data available.</p>');
         return;
+    }
+
+    // Debug: Log page normalization results
+    const uniquePages = Array.from(loadTimesByPath.keys()).sort();
+    console.log("[Performance Dashboard] ✓ Page paths normalized for load-time analytics");
+    console.log("[Performance Dashboard] ✓ Normalized pages:", uniquePages);
+    console.log("[Performance Dashboard] ✓ Total load events:", rawData.length);
+    
+    // Verify invalid paths were aggregated into 404
+    const has404 = loadTimesByPath.has('404');
+    if (has404) {
+        const notFoundCount = loadTimesByPath.get('404').length;
+        console.log("[Performance Dashboard] ✓ Invalid paths aggregated into 404 bucket:", notFoundCount, "events");
     }
 
     // Helper: Calculate Percentiles
