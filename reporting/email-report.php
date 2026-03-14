@@ -37,7 +37,15 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     exit();
 }
 
-$pdfBase64 = preg_replace('/^data:application\/pdf;base64,/', '', $pdfBase64Uri);
+$pdfBase64 = $pdfBase64Uri;
+
+if (preg_match('/^data:[^;]+;base64,/i', $pdfBase64Uri)) {
+    $parts = explode(',', $pdfBase64Uri, 2);
+    $pdfBase64 = isset($parts[1]) ? $parts[1] : '';
+}
+
+$pdfBase64 = preg_replace('/\s+/', '', $pdfBase64);
+
 if ($pdfBase64 === null || $pdfBase64 === '') {
     http_response_code(400);
     echo json_encode(['error' => 'Invalid PDF base64 data']);

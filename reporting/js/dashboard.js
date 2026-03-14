@@ -424,8 +424,6 @@ window.emailReportToUser = async function(report) {
     } catch (error) {
         alert(error.message);
     }
-
-    pdf.save(`analytics-report-${report.id}.pdf`);
 };
 
 window.deleteReport = function(reportId) {
