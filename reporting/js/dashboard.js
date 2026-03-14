@@ -375,61 +375,34 @@ window.buildReportPdfDocument = async function(report) {
 window.exportReportToPdf = async function(report) {
     try {
         const pdf = await window.buildReportPdfDocument(report);
-        pdf.save(`analytics-report-${report.id}.pdf`);
-    } catch (error) {
-        alert(error.message);
-    }
-};
+        const pdfDataUri = pdf.output('datauristring');
 
-window.emailReportToUser = async function(report) {
-    const targetEmail = prompt('Enter recipient email address:');
-    if (!targetEmail) return;
-
-    const email = targetEmail.trim();
-    if (!email.includes('@')) {
-        alert('Please enter a valid email address.');
-        return;
-    }
-
-    try {
-        const pdf = await window.buildReportPdfDocument(report);
-
-        const pdfArrayBuffer = pdf.output('arraybuffer');
-        const pdfBytes = new Uint8Array(pdfArrayBuffer);
-        let binary = '';
-        const chunkSize = 0x8000;
-        for (let i = 0; i < pdfBytes.length; i += chunkSize) {
-            const chunk = pdfBytes.subarray(i, i + chunkSize);
-            binary += String.fromCharCode(...chunk);
-        }
-        const pdfBase64 = btoa(binary);
-
-        const response = await fetch('email-report.php', {
+        const response = await fetch('api/export-pdf.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                email,
                 report_id: report.id,
-                pdf_base64: pdfBase64
+                pdf_base64: pdfDataUri
             })
         });
 
         const contentType = response.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) {
             const bodyText = await response.text();
-            throw new Error(`Invalid JSON from email endpoint: ${bodyText.slice(0, 180)}`);
+            throw new Error(`Invalid JSON from export endpoint: ${bodyText.slice(0, 180)}`);
         }
 
         const data = await response.json();
         if (!response.ok) {
-            throw new Error((data && data.error) ? data.error : `Email endpoint failed (${response.status}).`);
+            throw new Error((data && data.error) ? data.error : `Export endpoint failed (${response.status}).`);
         }
 
-        if (data && data.error) {
-            throw new Error(data.error);
+        if (!data || !data.url) {
+            throw new Error('Export endpoint did not return a file URL.');
         }
 
-        alert(data.message || 'Report email sent successfully.');
+        alert('PDF saved to server!');
+        window.open(data.url, '_blank');
     } catch (error) {
         alert(error.message);
     }
@@ -561,16 +534,9 @@ window.loadReports = function() {
                 exportBtn.textContent = 'Export to PDF';
                 exportBtn.addEventListener('click', () => window.exportReportToPdf(report));
 
-                const emailBtn = document.createElement('button');
-                emailBtn.type = 'button';
-                emailBtn.className = 'save-btn report-action-btn';
-                emailBtn.textContent = 'Email Report';
-                emailBtn.addEventListener('click', () => window.emailReportToUser(report));
-
                 const actions = document.createElement('div');
                 actions.className = 'report-card-actions';
                 actions.appendChild(exportBtn);
-                actions.appendChild(emailBtn);
 
                 cardNodes.push(commentLabel, body, meta);
 
