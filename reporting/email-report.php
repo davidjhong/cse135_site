@@ -39,11 +39,18 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 
 $pdfBase64 = $pdfBase64Uri;
 
-if (preg_match('/^data:[^;]+;base64,/i', $pdfBase64Uri)) {
-    $parts = explode(',', $pdfBase64Uri, 2);
-    $pdfBase64 = isset($parts[1]) ? $parts[1] : '';
+if (stripos($pdfBase64Uri, 'data:') === 0) {
+    $commaPos = strpos($pdfBase64Uri, ',');
+    if ($commaPos === false) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Invalid PDF data URI format']);
+        exit();
+    }
+    $pdfBase64 = substr($pdfBase64Uri, $commaPos + 1);
 }
 
+$pdfBase64 = rawurldecode($pdfBase64);
+$pdfBase64 = str_replace(['-', '_'], ['+', '/'], $pdfBase64);
 $pdfBase64 = preg_replace('/\s+/', '', $pdfBase64);
 
 if ($pdfBase64 === null || $pdfBase64 === '') {
@@ -54,8 +61,16 @@ if ($pdfBase64 === null || $pdfBase64 === '') {
 
 $pdfBinary = base64_decode($pdfBase64, true);
 if ($pdfBinary === false) {
+    $padding = strlen($pdfBase64) % 4;
+    if ($padding > 0) {
+        $pdfBase64 .= str_repeat('=', 4 - $padding);
+        $pdfBinary = base64_decode($pdfBase64, true);
+    }
+}
+
+if ($pdfBinary === false) {
     http_response_code(400);
-    echo json_encode(['error' => 'Failed to decode PDF data']);
+    echo json_encode(['error' => 'Failed to decode PDF data (invalid base64 payload)']);
     exit();
 }
 

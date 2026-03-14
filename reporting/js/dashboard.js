@@ -393,7 +393,16 @@ window.emailReportToUser = async function(report) {
 
     try {
         const pdf = await window.buildReportPdfDocument(report);
-        const pdfDataUri = pdf.output('datauristring');
+
+        const pdfArrayBuffer = pdf.output('arraybuffer');
+        const pdfBytes = new Uint8Array(pdfArrayBuffer);
+        let binary = '';
+        const chunkSize = 0x8000;
+        for (let i = 0; i < pdfBytes.length; i += chunkSize) {
+            const chunk = pdfBytes.subarray(i, i + chunkSize);
+            binary += String.fromCharCode(...chunk);
+        }
+        const pdfBase64 = btoa(binary);
 
         const response = await fetch('email-report.php', {
             method: 'POST',
@@ -401,7 +410,7 @@ window.emailReportToUser = async function(report) {
             body: JSON.stringify({
                 email,
                 report_id: report.id,
-                pdf_base64: pdfDataUri
+                pdf_base64: pdfBase64
             })
         });
 
