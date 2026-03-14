@@ -11,6 +11,68 @@ window.drawReliabilityDashboard = function(events) {
     };
 
     // ==========================================
+    // PAGE BUCKET NORMALIZATION (SHARED WITH LOAD ANALYTICS)
+    // ==========================================
+    
+    // Valid site pages that should appear as distinct buckets
+    const VALID_PAGES = new Set([
+        '/', 
+        '/index.html', 
+        '/index.php',
+        '/products.html',
+        '/products',
+        '/product-detail.html',
+        '/product-detail',
+        '/checkout.html',
+        '/checkout',
+        '/liquidation.html',
+        '/404.html'
+    ]);
+
+    // Map valid paths to display labels
+    const PAGE_LABELS = {
+        '/': 'Home',
+        '/index.html': 'Home',
+        '/index.php': 'Home',
+        '/products.html': 'Products',
+        '/products': 'Products',
+        '/product-detail.html': 'Product Detail',
+        '/product-detail': 'Product Detail',
+        '/checkout.html': 'Checkout',
+        '/checkout': 'Checkout',
+        '/liquidation.html': 'Liquidation',
+        '/404.html': '404'
+    };
+
+    // Normalize raw path to page bucket
+    function normalizePagePathForFailures(rawPath) {
+        if (!rawPath) return '404';
+        
+        // Remove query params and hash first
+        const cleanPath = rawPath.split('?')[0].split('#')[0];
+        
+        // Try exact match
+        if (VALID_PAGES.has(cleanPath)) {
+            return PAGE_LABELS[cleanPath] || cleanPath;
+        }
+        
+        // Try without trailing slash
+        const trimmedPath = cleanPath.replace(/\/$/, '');
+        if (VALID_PAGES.has(trimmedPath)) {
+            return PAGE_LABELS[trimmedPath] || trimmedPath;
+        }
+        
+        // Try with trailing slash added
+        const withSlash = cleanPath.endsWith('/') ? cleanPath : cleanPath + '/';
+        if (VALID_PAGES.has(withSlash)) {
+            return PAGE_LABELS[withSlash] || withSlash;
+        }
+        
+        // If path doesn't match a known valid route, normalize to 404
+        return '404';
+    }
+
+    // ==========================================
     // FAILURE EVENT NORMALIZATION
     // ==========================================
     
@@ -86,12 +148,13 @@ window.drawReliabilityDashboard = function(events) {
             failuresByType.set(type, failuresByType.get(type) + 1);
         }
 
-        // Count by page and type
-        const pageKey = failure.pagePath || '/';
-        if (!failuresByPage.has(pageKey)) {
-            failuresByPage.set(pageKey, new Map());
+        // Count by page and type (normalized)
+        const rawPagePath = failure.pagePath || '/';
+        const normalizedPageLabel = normalizePagePathForFailures(rawPagePath);
+        if (!failuresByPage.has(normalizedPageLabel)) {
+            failuresByPage.set(normalizedPageLabel, new Map());
         }
-        const pageTypes = failuresByPage.get(pageKey);
+        const pageTypes = failuresByPage.get(normalizedPageLabel);
         pageTypes.set(type, (pageTypes.get(type) || 0) + 1);
 
         // Count by URL
@@ -137,8 +200,9 @@ window.drawReliabilityDashboard = function(events) {
     } else {
         console.log("[Reliability Dashboard] ✓ Normalized failures:", normalizedFailures.length);
         console.log("[Reliability Dashboard] ✓ Failures by type:", Array.from(failuresByType.entries()));
-        console.log("[Reliability Dashboard] ✓ Failures by page:", Array.from(failuresByPage.entries()));
+        console.log("[Reliability Dashboard] ✓ Failures by page (NORMALIZED LABELS):", Array.from(failuresByPage.keys()).sort());
         console.log("[Reliability Dashboard] ✓ Unique pages detected:", failuresByPage.size);
+        console.log("[Reliability Dashboard] ✓ Page normalization: Invalid/malformed paths aggregated into 404 bucket");
         
         // Sample normalized records showing pagePath vs target separation
         console.log("[Reliability Dashboard] Sample normalized failures (pagePath vs target):");

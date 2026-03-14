@@ -14,13 +14,8 @@ window.drawPerformanceDashboard = function(events) {
         '/product-detail',
         '/checkout.html',
         '/checkout',
-        '/404.html',
-        '/test/index.html',
-        '/test/products.html',
-        '/test/product-detail.html',
-        '/test/checkout.html',
-        '/test/liquidation.html',
-        '/test/404.html'
+        '/liquidation.html',
+        '/404.html'
     ]);
 
     // Map valid paths to display labels
@@ -34,39 +29,45 @@ window.drawPerformanceDashboard = function(events) {
         '/product-detail': 'Product Detail',
         '/checkout.html': 'Checkout',
         '/checkout': 'Checkout',
-        '/404.html': '404',
-        '/test/index.html': 'Test Home',
-        '/test/products.html': 'Test Products',
-        '/test/product-detail.html': 'Test Product Detail',
-        '/test/checkout.html': 'Test Checkout',
-        '/test/liquidation.html': 'Test Liquidation',
-        '/test/404.html': 'Test 404'
+        '/liquidation.html': 'Liquidation',
+        '/404.html': '404'
     };
 
     // Normalize raw path to page bucket
     function normalizePagePath(rawPath) {
-        if (!rawPath) return '404';
-        
-        // Check if exact path is valid
-        if (VALID_PAGES.has(rawPath)) {
-            return PAGE_LABELS[rawPath] || rawPath;
+        if (!rawPath) {
+            console.debug("[normalizePagePath] Empty path → 404");
+            return '404';
         }
         
-        // Check if path without trailing slash is valid
-        const trimmedPath = rawPath.replace(/\/$/, '');
-        if (trimmedPath !== rawPath && VALID_PAGES.has(trimmedPath)) {
-            return PAGE_LABELS[trimmedPath] || trimmedPath;
+        // Remove query params and hash first
+        const cleanPath = rawPath.split('?')[0].split('#')[0];
+        
+        // Try exact match (with any trailing slash variations)
+        if (VALID_PAGES.has(cleanPath)) {
+            const result = PAGE_LABELS[cleanPath] || cleanPath;
+            console.debug(`[normalizePagePath] "${rawPath}" → "${result}" (exact match)`);
+            return result;
         }
         
-        // Check if path starts with a valid test route
-        if (rawPath.startsWith('/test/')) {
-            const testRoute = rawPath.match(/^\/test\/[^?#]*/)[0];
-            if (VALID_PAGES.has(testRoute)) {
-                return PAGE_LABELS[testRoute] || testRoute;
-            }
+        // Try without trailing slash
+        const trimmedPath = cleanPath.replace(/\/$/, '');
+        if (VALID_PAGES.has(trimmedPath)) {
+            const result = PAGE_LABELS[trimmedPath] || trimmedPath;
+            console.debug(`[normalizePagePath] "${rawPath}" → "${result}" (trimmed)`);
+            return result;
+        }
+        
+        // Try with trailing slash added
+        const withSlash = cleanPath.endsWith('/') ? cleanPath : cleanPath + '/';
+        if (VALID_PAGES.has(withSlash)) {
+            const result = PAGE_LABELS[withSlash] || withSlash;
+            console.debug(`[normalizePagePath] "${rawPath}" → "${result}" (with slash)`);
+            return result;
         }
         
         // If path doesn't match a known valid route, normalize to 404
+        console.debug(`[normalizePagePath] "${rawPath}" → "404" (no match). cleanPath was "${cleanPath}", trimmedPath was "${trimmedPath}"`);
         return '404';
     }
 
@@ -118,6 +119,9 @@ window.drawPerformanceDashboard = function(events) {
         const notFoundCount = loadTimesByPath.get('404').length;
         console.log("[Performance Dashboard] ✓ Invalid paths aggregated into 404 bucket:", notFoundCount, "events");
     }
+    
+    // Log valid pages for reference
+    console.log("[Performance Dashboard] Valid pages configured:", Array.from(VALID_PAGES));
 
     // Helper: Calculate Percentiles
     const getPercentile = (arr, p) => {
