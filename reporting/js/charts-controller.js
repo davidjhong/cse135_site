@@ -18,6 +18,10 @@ document.addEventListener('analyticsDataLoaded', (e) => {
         window.drawVisitorTimelineChart(events);
     }
 
+    if (document.getElementById("most-visited-pages-chart") && typeof window.drawTopPageTransitionsChart === 'function') {
+        window.drawTopPageTransitionsChart(events);
+    }
+
     if (document.getElementById("device-category-chart") && typeof window.drawDeviceCategoryChart === 'function') {
         window.drawDeviceCategoryChart(events);
     }

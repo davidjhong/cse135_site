@@ -104,10 +104,19 @@ function canView($section, $allowedSections) {
     <?php if (canView('behavior', $allowedSections)): ?>
     <div class="behavior-charts-box">
         <h3 class="subsection-title">Visitor Behavior Analytics</h3>
-        <div class="behavior-row">
+        
+        <!-- Row 1: Primary behavior charts -->
+        <div class="behavior-row-primary">
             <div id="visitor-timeline-chart" class="chart-panel"></div>
+            <div id="most-visited-pages-chart" class="chart-panel"></div>
+        </div>
+        
+        <!-- Row 2: Supporting chart -->
+        <div class="behavior-row-secondary">
             <div id="device-category-chart" class="chart-panel"></div>
         </div>
+        
+        <!-- Report areas for editors/analysts -->
         <?php if ($userRole !== 'viewer'): ?>
         <div class="behavior-report-row">
             <div class="report-input-area">
@@ -133,6 +142,7 @@ function canView($section, $allowedSections) {
     <script src="js/dashboard.js"></script>
     <script src="js/charts-performance.js"></script>
     <script src="js/charts-behavior.js"></script>
+    <script src="js/charts-visitors.js"></script>
     <script src="js/charts-reliability.js"></script>
     <script src="js/charts-controller.js"></script>
 </body>

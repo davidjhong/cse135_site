@@ -163,3 +163,22 @@ a.logout:hover {
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 2rem;
 }
+
+.behavior-row-primary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+    overflow: visible;
+}
+
+.behavior-row-secondary {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+    overflow: visible;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}

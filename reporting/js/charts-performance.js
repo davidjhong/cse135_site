@@ -215,10 +215,46 @@ function drawTrendChart(dataByDate, getP) {
         .attr("stroke-linecap", "round").attr("stroke-linejoin", "round")
         .attr("d", d3.line().x(d => x(d.date)).y(d => y(d.p50)).curve(d3.curveMonotoneX));
 
+    // P50 Data Points (Typical)
+    svg.selectAll("circle.point-p50")
+        .data(trendData)
+        .join("circle")
+        .attr("class", "point-p50")
+        .attr("cx", d => x(d.date))
+        .attr("cy", d => y(d.p50))
+        .attr("r", 4.5)
+        .attr("fill", "#0056b3")
+        .attr("opacity", 0.7)
+        .style("cursor", "pointer")
+        .on("mouseover", function() {
+            d3.select(this).transition().duration(150).attr("r", 6.5).attr("opacity", 1);
+        })
+        .on("mouseout", function() {
+            d3.select(this).transition().duration(150).attr("r", 4.5).attr("opacity", 0.7);
+        });
+
     // P90 Line (Slow Load Time) - draw last so it sits on top
     svg.append("path").datum(trendData).attr("fill", "none").attr("stroke", "#c82333").attr("stroke-width", 3)
         .attr("stroke-linecap", "round").attr("stroke-linejoin", "round")
         .attr("d", d3.line().x(d => x(d.date)).y(d => y(d.p90)).curve(d3.curveMonotoneX));
+
+    // P90 Data Points (Slow)
+    svg.selectAll("circle.point-p90")
+        .data(trendData)
+        .join("circle")
+        .attr("class", "point-p90")
+        .attr("cx", d => x(d.date))
+        .attr("cy", d => y(d.p90))
+        .attr("r", 4.5)
+        .attr("fill", "#c82333")
+        .attr("opacity", 0.7)
+        .style("cursor", "pointer")
+        .on("mouseover", function() {
+            d3.select(this).transition().duration(150).attr("r", 6.5).attr("opacity", 1);
+        })
+        .on("mouseout", function() {
+            d3.select(this).transition().duration(150).attr("r", 4.5).attr("opacity", 0.7);
+        });
 
     // Legend
     const legendX = innerW - 240;
@@ -275,9 +311,37 @@ function drawTrendChart(dataByDate, getP) {
                 </div>
             `);
 
-            let tipX = cx + margin.left + 15;
-            if (tipX + 200 > window.innerWidth) tipX = cx + margin.left - 200;
-            tooltip.style("left", `${tipX}px`).style("top", `${margin.top + y(d.p50) / 2}px`);
+            // Edge-aware tooltip positioning
+            const containerRect = container.node().getBoundingClientRect();
+            const tooltipWidth = 240;
+            const tooltipHeight = 140;
+            const [mouseX, mouseY] = d3.pointer(event, container.node());
+            
+            // Calculate positions
+            const rightPosition = mouseX + 15;
+            const leftPosition = mouseX - tooltipWidth - 15;
+            
+            // Determine horizontal position based on available space
+            let tipX;
+            if (rightPosition + tooltipWidth < containerRect.width) {
+                // Enough space on right side
+                tipX = rightPosition;
+            } else if (leftPosition > 0) {
+                // Enough space on left side
+                tipX = leftPosition;
+            } else {
+                // Default: try right, but may overflow
+                tipX = rightPosition;
+            }
+            
+            // Vertical position - center on midpoint between the two metrics
+            const cy = margin.top + (y(d.p50) + y(d.p90)) / 2;
+            let tipY = cy - tooltipHeight / 2;
+            
+            // Clamp to visible area
+            tipY = Math.max(margin.top, Math.min(tipY, window.innerHeight - tooltipHeight - 20));
+            
+            tooltip.style("left", `${tipX}px`).style("top", `${tipY}px`);
         });
 }
 
