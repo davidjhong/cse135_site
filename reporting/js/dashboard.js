@@ -1,3 +1,43 @@
+const THIRD_PARTY_SCRIPT_STATE = new Map();
+const HTML2CANVAS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+const JSPDF_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+
+function loadScriptOnce(src, isReady) {
+    if (isReady()) {
+        return Promise.resolve();
+    }
+
+    if (THIRD_PARTY_SCRIPT_STATE.has(src)) {
+        return THIRD_PARTY_SCRIPT_STATE.get(src);
+    }
+
+    const loader = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.onload = () => {
+            if (isReady()) {
+                resolve();
+            } else {
+                reject(new Error(`Script loaded but API unavailable: ${src}`));
+            }
+        };
+        script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+        document.head.appendChild(script);
+    });
+
+    THIRD_PARTY_SCRIPT_STATE.set(src, loader);
+    return loader;
+}
+
+async function ensureHtml2CanvasLoaded() {
+    await loadScriptOnce(HTML2CANVAS_URL, () => typeof window.html2canvas === 'function');
+}
+
+async function ensureJsPdfLoaded() {
+    await loadScriptOnce(JSPDF_URL, () => Boolean(window.jspdf && typeof window.jspdf.jsPDF === 'function'));
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const EVENTS_API_URL = 'https://reporting.davidjhong.site/api/events.php';
 
@@ -220,7 +260,10 @@ window.saveReport = function(category, chartName, inputId) {
             return;
         }
 
-        if (typeof html2canvas !== 'function') {
+        try {
+            await ensureHtml2CanvasLoaded();
+        } catch (error) {
+            console.error(error);
             alert('Snapshot library failed to load. Please refresh and try again.');
             return;
         }
@@ -298,7 +341,9 @@ window.saveReport = function(category, chartName, inputId) {
 };
 
 window.buildReportPdfDocument = async function(report) {
-    if (!window.jspdf || typeof window.jspdf.jsPDF !== 'function') {
+    try {
+        await ensureJsPdfLoaded();
+    } catch (error) {
         throw new Error('PDF library failed to load. Please refresh and try again.');
     }
 

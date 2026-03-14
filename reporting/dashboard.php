@@ -9,6 +9,9 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 // Extract RBAC variables with safe fallbacks
 $userRole = $_SESSION['role'] ?? 'viewer';
 $allowedSections = $_SESSION['allowed_sections'] ?? [];
+$username = $_SESSION['username'] ?? 'User';
+
+session_write_close();
 
 // Helper function to check if a user has access to a specific section
 function canView($section, $allowedSections) {
@@ -38,7 +41,7 @@ function canView($section, $allowedSections) {
     <div class="nav">
         <h2>Analytics Dashboard</h2>
         <div>
-            Welcome, <?php echo htmlspecialchars($_SESSION['username']); ?> 
+            Welcome, <?php echo htmlspecialchars($username); ?> 
             (Role: <?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $userRole))); ?>) | 
             <a href="logout.php" class="logout">Logout</a>
         </div>
@@ -207,8 +210,6 @@ function canView($section, $allowedSections) {
         <div id="reports-feed">Loading reports...</div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="js/dashboard.js"></script>
     <script src="js/analytics-utils.js"></script>
     <script src="js/charts-performance.js"></script>
