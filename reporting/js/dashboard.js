@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. DATA FETCHING (Unconditional)
-    // We fetch the data immediately so charts get what they need, regardless of table permissions.
-    fetch('https://reporting.davidjhong.site/api/events.php')
+    const EVENTS_API_URL = 'https://reporting.davidjhong.site/api/events.php';
+
+    fetch(EVENTS_API_URL)
         .then(response => {
             if (!response.ok) throw new Error('Network response was not ok');
             return response.json();
@@ -31,13 +31,35 @@ document.addEventListener('DOMContentLoaded', () => {
     function initTable(allEvents, tbody) {
         const controls = document.getElementById('table-controls');
         const toggleButton = document.getElementById('toggle-btn');
+        const quickCollapseButton = document.createElement('button');
+        quickCollapseButton.type = 'button';
+        quickCollapseButton.className = 'table-quick-collapse-btn';
+        quickCollapseButton.textContent = 'Collapse Table';
+        quickCollapseButton.hidden = true;
+        document.body.appendChild(quickCollapseButton);
+
+        const getDateKey = (rawValue) => {
+            if (!rawValue) return null;
+            const value = String(rawValue).trim();
+            const match = value.match(/^(\d{4}-\d{2}-\d{2})/);
+            return match ? match[1] : null;
+        };
+
+        const today = new Date();
+        const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29);
+        const startKey = startDate.toISOString().slice(0, 10);
+        const endKey = today.toISOString().slice(0, 10);
+        const eventsLast30Days = allEvents.filter((event) => {
+            const dateKey = getDateKey(event.created_at);
+            return Boolean(dateKey) && dateKey >= startKey && dateKey <= endKey;
+        });
         
         const INITIAL_LIMIT = 10;
-        const MAX_DISPLAY_EVENTS = 100;
         let isExpanded = false;
 
-        if (allEvents.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6">No events found in the database.</td></tr>';
+        if (eventsLast30Days.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6">No events found in the last 30 days.</td></tr>';
+            quickCollapseButton.hidden = true;
             return;
         }
 
@@ -58,6 +80,15 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        quickCollapseButton.addEventListener('click', () => {
+            isExpanded = false;
+            renderTable();
+            const container = document.getElementById('data-container');
+            if (container) {
+                container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+
         function renderTable() {
             tbody.replaceChildren();
             
@@ -69,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 headerRow.appendChild(th);
             }
 
-            const displayEvents = allEvents.slice(0, MAX_DISPLAY_EVENTS);
+            const displayEvents = eventsLast30Days;
             const limit = isExpanded ? displayEvents.length : Math.min(INITIAL_LIMIT, displayEvents.length);
             const fragment = document.createDocumentFragment();
 
@@ -125,17 +156,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     toggleButton.textContent = `Collapse to ${INITIAL_LIMIT}`;
                     toggleButton.classList.remove('expand');
                     toggleButton.classList.add('collapse');
+                    quickCollapseButton.hidden = false;
                 } else {
                     const hiddenCount = displayEvents.length - INITIAL_LIMIT;
                     toggleButton.textContent = `View Remaining (${hiddenCount})`;
                     toggleButton.classList.remove('collapse');
                     toggleButton.classList.add('expand');
+                    quickCollapseButton.hidden = true;
                 }
                 toggleButton.hidden = false;
                 controls.hidden = false;
             } else {
                 toggleButton.hidden = true;
                 controls.hidden = true;
+                quickCollapseButton.hidden = true;
             }
         }
 
@@ -160,46 +194,311 @@ window.deleteEvent = function(id) {
 };
 
 window.saveReport = function(category, chartName, inputId) {
-    const textArea = document.getElementById(inputId || `${category}-comment`);
-    if (!textArea) {
-        alert('Report input not found.');
+    const resolveCaptureSelector = () => {
+        if (inputId === 'reliability-comment' || chartName === 'Failure Analysis') {
+            return '.reliability-charts-box';
+        }
+        if (category === 'behavior') {
+            return '.behavior-charts-box';
+        }
+        if (category === 'performance') {
+            return '.perf-charts-box';
+        }
+        return null;
+    };
+
+    const performSave = async () => {
+        const textArea = document.getElementById(inputId || `${category}-comment`);
+        if (!textArea) {
+            alert('Report input not found.');
+            return;
+        }
+
+        const text = textArea.value.trim();
+        if (!text) {
+            alert('Please enter some analysis before saving.');
+            return;
+        }
+
+        if (typeof html2canvas !== 'function') {
+            alert('Snapshot library failed to load. Please refresh and try again.');
+            return;
+        }
+
+        const selector = resolveCaptureSelector();
+        const captureContainer = selector ? document.querySelector(selector) : null;
+        if (!captureContainer) {
+            alert('Chart container not found for snapshot.');
+            return;
+        }
+
+        const reportAreas = Array.from(captureContainer.querySelectorAll('.report-input-area'));
+        const previousDisplays = reportAreas.map(area => area.style.display);
+
+        let snapshotBase64 = null;
+
+        try {
+            reportAreas.forEach(area => {
+                area.style.display = 'none';
+            });
+
+            const canvas = await html2canvas(captureContainer, {
+                backgroundColor: '#ffffff',
+                useCORS: true,
+                scale: 2
+            });
+            snapshotBase64 = canvas.toDataURL('image/jpeg', 0.95);
+        } catch (error) {
+            console.error('Failed to capture snapshot:', error);
+            alert('Failed to capture chart snapshot. Please try again.');
+            return;
+        } finally {
+            reportAreas.forEach((area, index) => {
+                area.style.display = previousDisplays[index];
+            });
+        }
+
+        try {
+            const response = await fetch('api/reports.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    category,
+                    chart_name: chartName,
+                    comment_text: text,
+                    chart_snapshot: snapshotBase64
+                })
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                const bodyText = await response.text();
+                throw new Error(`Invalid JSON from reports API: ${bodyText.slice(0, 180)}`);
+            }
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error((data && data.error) ? data.error : `Reports API failed (${response.status}).`);
+            }
+
+            if (data && data.error) {
+                throw new Error(data.error);
+            }
+
+            alert(data.message);
+            textArea.value = '';
+            if (typeof loadReports === 'function') loadReports();
+        } catch (error) {
+            alert(error.message);
+        }
+    };
+
+    performSave();
+};
+
+window.buildReportPdfDocument = async function(report) {
+    if (!window.jspdf || typeof window.jspdf.jsPDF !== 'function') {
+        throw new Error('PDF library failed to load. Please refresh and try again.');
+    }
+
+    const loadImageDimensions = (dataUrl) => new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+        image.onerror = () => reject(new Error('Failed to decode snapshot image.'));
+        image.src = dataUrl;
+    });
+
+    const hasSnapshot = report.chart_snapshot && typeof report.chart_snapshot === 'string' && report.chart_snapshot.startsWith('data:image');
+
+    let snapshotDimensions = null;
+    if (hasSnapshot) {
+        try {
+            snapshotDimensions = await loadImageDimensions(report.chart_snapshot);
+        } catch (error) {
+            console.error('Failed to read snapshot dimensions:', error);
+        }
+    }
+
+    const orientation = snapshotDimensions && snapshotDimensions.width > snapshotDimensions.height ? 'landscape' : 'portrait';
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4', orientation });
+    const margin = 24;
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const contentWidth = pageWidth - (margin * 2);
+
+    if (snapshotDimensions) {
+        try {
+            pdf.setFontSize(13);
+            pdf.text(`Analytics Report #${report.id}`, margin, margin + 10);
+
+            const availableHeight = pageHeight - ((margin * 2) + 24);
+            const widthScale = contentWidth / snapshotDimensions.width;
+            const heightScale = availableHeight / snapshotDimensions.height;
+            const scale = Math.min(widthScale, heightScale);
+
+            const renderWidth = snapshotDimensions.width * scale;
+            const renderHeight = snapshotDimensions.height * scale;
+            const renderX = (pageWidth - renderWidth) / 2;
+            const renderY = margin + 20 + ((availableHeight - renderHeight) / 2);
+
+            pdf.addImage(report.chart_snapshot, 'JPEG', renderX, renderY, renderWidth, renderHeight, undefined, 'SLOW');
+            pdf.addPage('p', 'a4');
+        } catch (error) {
+            console.error('Failed to add snapshot image to PDF:', error);
+        }
+    }
+
+    const textPageWidth = pdf.internal.pageSize.getWidth();
+    const textMargin = 40;
+    const textContentWidth = textPageWidth - (textMargin * 2);
+
+    pdf.setFontSize(14);
+    pdf.text(`Analytics Report #${report.id}`, textMargin, 50);
+    pdf.setFontSize(11);
+    pdf.text(`Category: ${report.category || 'Unknown'}`, textMargin, 72);
+    pdf.text(`Chart: ${report.chart_name || 'Unknown Chart'}`, textMargin, 88);
+    pdf.text(`Author: ${report.username || 'Unknown'}`, textMargin, 104);
+    pdf.text(`Created: ${report.created_at || ''}`, textMargin, 120);
+
+    const comment = report.comment_text || '';
+    const wrappedComment = pdf.splitTextToSize(comment, textContentWidth);
+    pdf.setFontSize(12);
+    pdf.text('Analyst Comment:', textMargin, 150);
+    pdf.setFontSize(11);
+    pdf.text(wrappedComment, textMargin, 168);
+
+    return pdf;
+};
+
+window.exportReportToPdf = async function(report) {
+    try {
+        const pdf = await window.buildReportPdfDocument(report);
+        pdf.save(`analytics-report-${report.id}.pdf`);
+    } catch (error) {
+        alert(error.message);
+    }
+};
+
+window.emailReportToUser = async function(report) {
+    const targetEmail = prompt('Enter recipient email address:');
+    if (!targetEmail) return;
+
+    const email = targetEmail.trim();
+    if (!email.includes('@')) {
+        alert('Please enter a valid email address.');
         return;
     }
 
-    const text = textArea.value.trim();
+    try {
+        const pdf = await window.buildReportPdfDocument(report);
+        const pdfDataUri = pdf.output('datauristring');
 
-    if (!text) {
-        alert("Please enter some analysis before saving.");
+        const response = await fetch('email-report.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email,
+                report_id: report.id,
+                pdf_base64: pdfDataUri
+            })
+        });
+
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+            const bodyText = await response.text();
+            throw new Error(`Invalid JSON from email endpoint: ${bodyText.slice(0, 180)}`);
+        }
+
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error((data && data.error) ? data.error : `Email endpoint failed (${response.status}).`);
+        }
+
+        if (data && data.error) {
+            throw new Error(data.error);
+        }
+
+        alert(data.message || 'Report email sent successfully.');
+    } catch (error) {
+        alert(error.message);
+    }
+
+    pdf.save(`analytics-report-${report.id}.pdf`);
+};
+
+window.deleteReport = function(reportId) {
+    if (typeof currentUserRole === 'undefined' || currentUserRole !== 'super_admin') {
+        alert('Only Super Admins can delete reports.');
         return;
     }
 
-    fetch('/api/reports.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            category: category,
-            chart_name: chartName,
-            comment_text: text
+    if (!confirm(`Delete report #${reportId}? This action cannot be undone.`)) {
+        return;
+    }
+
+    fetch(`api/reports.php?id=${encodeURIComponent(reportId)}`, { method: 'DELETE' })
+        .then(async (res) => {
+            const bodyText = await res.text();
+            const contentType = res.headers.get('content-type') || '';
+
+            if (!contentType.includes('application/json')) {
+                throw new Error(`Invalid JSON from reports API: ${bodyText.slice(0, 180)}`);
+            }
+
+            let data;
+            try {
+                data = JSON.parse(bodyText);
+            } catch {
+                throw new Error(`Invalid JSON from reports API: ${bodyText.slice(0, 180)}`);
+            }
+
+            if (!res.ok) {
+                throw new Error((data && data.error) ? data.error : `Failed to delete report (${res.status}).`);
+            }
+
+            return data;
         })
-    })
-    .then(response => {
-        if (!response.ok) throw new Error('Failed to save report');
-        return response.json();
-    })
-    .then(data => {
-        alert(data.message);
-        textArea.value = ''; // Clear the box on success
-        if (typeof loadReports === 'function') loadReports(); // Refresh feed if visible
-    })
-    .catch(error => alert(error.message));
+        .then((data) => {
+            alert(data.message || 'Report deleted successfully.');
+            if (typeof loadReports === 'function') loadReports();
+        })
+        .catch((error) => {
+            alert(error.message);
+        });
 };
 
 window.loadReports = function() {
     const feed = document.getElementById('reports-feed');
     if (!feed) return;
 
-    fetch('/api/reports.php')
-        .then(res => res.json())
+    fetch('api/reports.php')
+        .then(async (res) => {
+            const bodyText = await res.text();
+            const contentType = res.headers.get('content-type') || '';
+
+            if (!contentType.includes('application/json')) {
+                throw new Error(`Invalid JSON from reports API: ${bodyText.slice(0, 180)}`);
+            }
+
+            let data;
+            try {
+                data = JSON.parse(bodyText);
+            } catch {
+                throw new Error(`Invalid JSON from reports API: ${bodyText.slice(0, 180)}`);
+            }
+
+            if (!res.ok) {
+                throw new Error((data && data.error) ? data.error : `Reports API failed (${res.status}).`);
+            }
+
+            if (!Array.isArray(data)) {
+                throw new Error('Unexpected reports payload shape from reports API.');
+            }
+
+            return data;
+        })
         .then(data => {
             feed.replaceChildren();
 
@@ -226,6 +525,21 @@ window.loadReports = function() {
                 body.className = 'report-card-body';
                 body.textContent = report.comment_text || '';
 
+                const commentLabel = document.createElement('div');
+                commentLabel.className = 'report-card-comment-label';
+                commentLabel.textContent = 'Comments';
+
+                const cardNodes = [title];
+
+                if (report.chart_snapshot && typeof report.chart_snapshot === 'string') {
+                    const snapshot = document.createElement('img');
+                    snapshot.src = report.chart_snapshot;
+                    snapshot.alt = `Snapshot for report ${report.id}`;
+                    snapshot.className = 'report-card-snapshot';
+                    snapshot.loading = 'lazy';
+                    cardNodes.push(snapshot);
+                }
+
                 const meta = document.createElement('small');
                 meta.className = 'report-card-meta';
                 meta.append('Authored by ');
@@ -234,16 +548,47 @@ window.loadReports = function() {
                 username.textContent = report.username || 'Unknown';
                 meta.append(username, ` on ${report.created_at || ''}`);
 
-                card.append(title, body, meta);
+                const exportBtn = document.createElement('button');
+                exportBtn.type = 'button';
+                exportBtn.className = 'save-btn report-action-btn';
+                exportBtn.textContent = 'Export to PDF';
+                exportBtn.addEventListener('click', () => window.exportReportToPdf(report));
+
+                const emailBtn = document.createElement('button');
+                emailBtn.type = 'button';
+                emailBtn.className = 'save-btn report-action-btn';
+                emailBtn.textContent = 'Email Report';
+                emailBtn.addEventListener('click', () => window.emailReportToUser(report));
+
+                const actions = document.createElement('div');
+                actions.className = 'report-card-actions';
+                actions.appendChild(exportBtn);
+                actions.appendChild(emailBtn);
+
+                cardNodes.push(commentLabel, body, meta);
+
+                if (typeof currentUserRole !== 'undefined' && currentUserRole === 'super_admin') {
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.type = 'button';
+                    deleteBtn.className = 'save-btn report-action-btn';
+                    deleteBtn.textContent = 'Delete Report';
+                    deleteBtn.addEventListener('click', () => window.deleteReport(report.id));
+                    actions.appendChild(deleteBtn);
+                }
+
+                cardNodes.push(actions);
+
+                card.append(...cardNodes);
                 fragment.appendChild(card);
             });
             feed.appendChild(fragment);
         })
-        .catch(() => {
+        .catch((error) => {
+            console.error('Failed to load reports:', error);
             feed.replaceChildren();
             const errMsg = document.createElement('p');
             errMsg.className = 'error';
-            errMsg.textContent = 'Failed to load reports.';
+            errMsg.textContent = `Failed to load reports: ${error.message}`;
             feed.appendChild(errMsg);
         });
 };

@@ -41,6 +41,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="css/login.css">
 </head>
 <body>
+    <noscript>
+        <div class="error" style="max-width:420px;margin:16px auto 0 auto;background:#fff3cd;color:#6b4e00;border:1px solid #ffeeba;padding:10px;border-radius:6px;">
+            JavaScript is disabled. You can still sign in, but interactive dashboard charts require JavaScript.
+        </div>
+    </noscript>
     <div class="login-box">
         <h2>Admin Login</h2>
         <?php if ($error): ?>

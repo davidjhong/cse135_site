@@ -1,75 +1,22 @@
 window.drawPerformanceDashboard = function(events) {
-    // ==========================================
-    // PAGE NORMALIZATION FOR LOAD-TIME ANALYTICS
-    // ==========================================
-    
-    // Valid site pages that should appear as distinct buckets
-    const VALID_PAGES = new Set([
-        '/', 
-        '/index.html', 
-        '/index.php',
-        '/products.html',
-        '/products',
-        '/product-detail.html',
-        '/product-detail',
-        '/checkout.html',
-        '/checkout',
-        '/liquidation.html',
-        '/404.html'
-    ]);
-
-    // Map valid paths to display labels
-    const PAGE_LABELS = {
-        '/': 'Home',
-        '/index.html': 'Home',
-        '/index.php': 'Home',
-        '/products.html': 'Products',
-        '/products': 'Products',
-        '/product-detail.html': 'Product Detail',
-        '/product-detail': 'Product Detail',
-        '/checkout.html': 'Checkout',
-        '/checkout': 'Checkout',
-        '/liquidation.html': 'Liquidation',
-        '/404.html': '404'
-    };
-
-    // Normalize raw path to page bucket
-    function normalizePagePath(rawPath) {
-        if (!rawPath) {
-            console.debug("[normalizePagePath] Empty path → 404");
-            return '404';
-        }
-        
-        // Remove query params and hash first
-        const cleanPath = rawPath.split('?')[0].split('#')[0];
-        
-        // Try exact match (with any trailing slash variations)
-        if (VALID_PAGES.has(cleanPath)) {
-            const result = PAGE_LABELS[cleanPath] || cleanPath;
-            console.debug(`[normalizePagePath] "${rawPath}" → "${result}" (exact match)`);
-            return result;
-        }
-        
-        // Try without trailing slash
-        const trimmedPath = cleanPath.replace(/\/$/, '');
-        if (VALID_PAGES.has(trimmedPath)) {
-            const result = PAGE_LABELS[trimmedPath] || trimmedPath;
-            console.debug(`[normalizePagePath] "${rawPath}" → "${result}" (trimmed)`);
-            return result;
-        }
-        
-        // Try with trailing slash added
-        const withSlash = cleanPath.endsWith('/') ? cleanPath : cleanPath + '/';
-        if (VALID_PAGES.has(withSlash)) {
-            const result = PAGE_LABELS[withSlash] || withSlash;
-            console.debug(`[normalizePagePath] "${rawPath}" → "${result}" (with slash)`);
-            return result;
-        }
-        
-        // If path doesn't match a known valid route, normalize to 404
-        console.debug(`[normalizePagePath] "${rawPath}" → "404" (no match). cleanPath was "${cleanPath}", trimmedPath was "${trimmedPath}"`);
-        return '404';
-    }
+    const analyticsUtils = window.AnalyticsUtils || {};
+    const normalizePagePath = typeof analyticsUtils.normalizePagePath === 'function'
+        ? analyticsUtils.normalizePagePath
+        : (() => '404');
+    const extractPathFromUrl = typeof analyticsUtils.extractPathFromUrl === 'function'
+        ? analyticsUtils.extractPathFromUrl
+        : (() => '/');
+    const getPercentile = typeof analyticsUtils.getPercentile === 'function'
+        ? analyticsUtils.getPercentile
+        : ((arr, p) => {
+            if (!Array.isArray(arr) || arr.length === 0) return 0;
+            const sorted = [...arr].sort((a, b) => a - b);
+            const pos = (sorted.length - 1) * p;
+            const base = Math.floor(pos);
+            const rest = pos - base;
+            if (sorted[base + 1] !== undefined) return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
+            return sorted[base];
+        });
 
     const rawData = [];
     const loadTimesByPath = new Map();
@@ -84,10 +31,8 @@ window.drawPerformanceDashboard = function(events) {
 
         let pathName = '404';
         try {
-            const urlObj = new URL(ev.raw_data.url);
-            let rawPath = urlObj.pathname;
-            
-            // Normalize raw path to valid page bucket
+            const pageUrl = ev.raw_data?.url || ev.url || '';
+            const rawPath = extractPathFromUrl(pageUrl);
             pathName = normalizePagePath(rawPath);
         } catch (e) {
             pathName = '404';
@@ -121,24 +66,108 @@ window.drawPerformanceDashboard = function(events) {
     }
     
     // Log valid pages for reference
-    console.log("[Performance Dashboard] Valid pages configured:", Array.from(VALID_PAGES));
+    if (analyticsUtils.VALID_PAGES) {
+        console.log("[Performance Dashboard] Valid pages configured:", Array.from(analyticsUtils.VALID_PAGES));
+    }
 
-    // Helper: Calculate Percentiles
-    const getPercentile = (arr, p) => {
-        if (arr.length === 0) return 0;
-        const sorted = [...arr].sort((a, b) => a - b);
-        const pos = (sorted.length - 1) * p;
-        const base = Math.floor(pos);
-        const rest = pos - base;
-        if (sorted[base + 1] !== undefined) return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
-        return sorted[base];
-    };
+    // ==========================================
+    // POPULATE PERFORMANCE KPI METRICS
+    // ==========================================
+    
+    // Collect all load times for overall metrics
+    const allLoadTimes = Array.from(loadTimesByPath.values()).flat();
+    const overallTypical = getPercentile(allLoadTimes, 0.50);
+    const overallSlow = getPercentile(allLoadTimes, 0.90);
+    const totalLoadEvents = allLoadTimes.length;
+    const uniquePageCount = loadTimesByPath.size;
+    
+    // Find page with best typical performance
+    let bestPageTypical = '';
+    let bestTypicalValue = Infinity;
+    loadTimesByPath.forEach((times, page) => {
+        const pageTypical = getPercentile(times, 0.50);
+        if (pageTypical < bestTypicalValue) {
+            bestTypicalValue = pageTypical;
+            bestPageTypical = page;
+        }
+    });
+    
+    // Find page(s) with worst slow performance (top 1-2 contributors)
+    const pageSlowPerformance = Array.from(loadTimesByPath.entries())
+        .map(([page, times]) => ({
+            page,
+            slowTime: getPercentile(times, 0.90)
+        }))
+        .sort((a, b) => b.slowTime - a.slowTime);
+    
+    const slowTailPages = pageSlowPerformance.slice(0, 2).map(p => p.page);
+    const slowTailText = slowTailPages.length > 0 ? slowTailPages.join(', ') : 'N/A';
+    
+    // Update KPI cards
+    d3.select("#performance-kpi-typical").text(Math.round(overallTypical) + " ms");
+    d3.select("#performance-kpi-typical-helper").text(`Fastest typical page: ${bestPageTypical}`);
+    
+    d3.select("#performance-kpi-slow").text(Math.round(overallSlow) + " ms");
+    d3.select("#performance-kpi-slow-helper").text(`Slow tail driven by: ${slowTailText}`);
+    
+    d3.select("#performance-kpi-events").text(totalLoadEvents);
+    d3.select("#performance-kpi-events-helper").text(`Across ${uniquePageCount} normalized pages`);
 
     // Execute drawing functions
     drawTrendChart(loadTimesByDate, getPercentile);
     drawPageComparisonChart(loadTimesByPath, getPercentile);
     drawTrafficVolumeChart(loadTimesByPath);
+
+    generatePerformanceInsight(rawData, loadTimesByPath, getPercentile);
 };
+
+function upsertPerformanceInsightBox(text) {
+    const textarea = document.getElementById('loadtime-comment');
+    if (!textarea) return;
+
+    const reportArea = textarea.closest('.report-input-area');
+    if (!reportArea) return;
+
+    let box = reportArea.querySelector('.auto-summary-box');
+    if (!box) {
+        box = document.createElement('div');
+        box.className = 'auto-summary-box';
+        reportArea.insertBefore(box, textarea);
+    }
+
+    box.textContent = text;
+}
+
+function generatePerformanceInsight(rawData, loadTimesByPath, getPercentile) {
+    if (!Array.isArray(rawData) || rawData.length === 0) {
+        upsertPerformanceInsightBox('Automated Insight: No recent performance events were detected in the current 30-day window.');
+        return;
+    }
+
+    const allLoadTimes = rawData.map(d => d.time).filter(v => Number.isFinite(v));
+    if (allLoadTimes.length === 0) {
+        upsertPerformanceInsightBox('Automated Insight: Performance events were found, but load-time values were unavailable for summary generation.');
+        return;
+    }
+
+    const p50 = Math.round(getPercentile(allLoadTimes, 0.50));
+    const p90 = Math.round(getPercentile(allLoadTimes, 0.90));
+
+    let slowestPage = 'Unknown';
+    let slowestAvg = -1;
+
+    loadTimesByPath.forEach((times, page) => {
+        if (!Array.isArray(times) || times.length === 0) return;
+        const avg = times.reduce((sum, value) => sum + value, 0) / times.length;
+        if (avg > slowestAvg) {
+            slowestAvg = avg;
+            slowestPage = page;
+        }
+    });
+
+    const insight = `Automated Insight: Sitewide typical load time is ${p50}ms, with a slow tail of ${p90}ms. The '${slowestPage}' page is currently the primary bottleneck.`;
+    upsertPerformanceInsightBox(insight);
+}
 
 const PERF_BANDS = {
     excellent: { max: 500, color: '#28a745', label: 'Excellent' },

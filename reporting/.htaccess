@@ -1,0 +1,13 @@
+Options -Indexes
+DirectoryIndex index.php login.php
+
+RewriteEngine On
+RewriteRule ^index\.html$ index.php [L]
+
+ErrorDocument 403 /reporting/403.html
+ErrorDocument 404 /reporting/404.html
+ErrorDocument 500 /reporting/500.html
+
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>

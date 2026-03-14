@@ -168,18 +168,14 @@
     
     <!-- Hidden broken assets to trigger reliability tracking naturally -->
     <div style="display: none;">
-        <!-- Broken images -->
+        <!-- Broken image -->
         <img src="/images/missing-hero-banner.jpg" alt="broken">
-        <img src="/cdn/assets/product-placeholder-404.png" alt="broken">
-        <img src="//cdn.nonexistent.com/image.jpg" alt="broken">
         
-        <!-- Broken external scripts -->
+        <!-- Broken external script -->
         <script src="/scripts/analytics-broken.js"></script>
-        <script src="//external-cdn.invalid/lib.js"></script>
         
         <!-- Broken stylesheet -->
         <link rel="stylesheet" href="/css/missing-theme.css">
-        <link rel="stylesheet" href="//fonts.googleapis.invalid/css">
     </div>
     
     <!-- Auto-trigger API failures on page load for demo -->
@@ -187,23 +183,9 @@
         window.addEventListener('load', function() {
             // Simulate various API failures that happen during normal site operation
             setTimeout(function() {
-                // 400 Bad Request - user tracking fails
+                // Keep one lightweight API failure for reliability telemetry
                 fetch('/reporting/api/events.php?invalidUserData=true')
                     .catch(err => console.log('user-sync failed'));
-                    
-                // 500 Server Error - analytics enrichment fails
-                fetch('/reporting/api/events.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ enrich: 'error' })
-                }).catch(err => console.log('enrich failed'));
-                    
-                // 422 Unprocessable Entity - inventory check fails
-                fetch('/reporting/api/reports.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ inventory: 'invalid' })
-                }).catch(err => console.log('inventory failed'));
             }, 2000);
         });
     </script>
@@ -213,9 +195,7 @@
         window.addEventListener('load', function() {
             // Load broken images
             const brokenImages = [
-                '/images/hero-background.jpg',
-                '/cdn/home-banner.png',
-                '/assets/features-icon.svg'
+                '/images/hero-background.jpg'
             ];
             brokenImages.forEach(url => {
                 const img = document.createElement('img');
@@ -223,12 +203,6 @@
                 img.style.display = 'none';
                 document.body.appendChild(img);
             });
-            
-            // Load broken stylesheet
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = '/css/home-theme.css';
-            document.head.appendChild(link);
         });
     </script>
 </body>

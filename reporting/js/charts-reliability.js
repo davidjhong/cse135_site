@@ -1,4 +1,6 @@
 window.drawReliabilityDashboard = function(events) {
+    const analyticsUtils = window.AnalyticsUtils || {};
+
     // ==========================================
     // CENTRALIZED COLOR PALETTE FOR ALL CHARTS
     // ==========================================
@@ -10,67 +12,9 @@ window.drawReliabilityDashboard = function(events) {
         'Runtime JS Error': '#6c757d'    // Gray (technical/debug)
     };
 
-    // ==========================================
-    // PAGE BUCKET NORMALIZATION (SHARED WITH LOAD ANALYTICS)
-    // ==========================================
-    
-    // Valid site pages that should appear as distinct buckets
-    const VALID_PAGES = new Set([
-        '/', 
-        '/index.html', 
-        '/index.php',
-        '/products.html',
-        '/products',
-        '/product-detail.html',
-        '/product-detail',
-        '/checkout.html',
-        '/checkout',
-        '/liquidation.html',
-        '/404.html'
-    ]);
-
-    // Map valid paths to display labels
-    const PAGE_LABELS = {
-        '/': 'Home',
-        '/index.html': 'Home',
-        '/index.php': 'Home',
-        '/products.html': 'Products',
-        '/products': 'Products',
-        '/product-detail.html': 'Product Detail',
-        '/product-detail': 'Product Detail',
-        '/checkout.html': 'Checkout',
-        '/checkout': 'Checkout',
-        '/liquidation.html': 'Liquidation',
-        '/404.html': '404'
-    };
-
-    // Normalize raw path to page bucket
-    function normalizePagePathForFailures(rawPath) {
-        if (!rawPath) return '404';
-        
-        // Remove query params and hash first
-        const cleanPath = rawPath.split('?')[0].split('#')[0];
-        
-        // Try exact match
-        if (VALID_PAGES.has(cleanPath)) {
-            return PAGE_LABELS[cleanPath] || cleanPath;
-        }
-        
-        // Try without trailing slash
-        const trimmedPath = cleanPath.replace(/\/$/, '');
-        if (VALID_PAGES.has(trimmedPath)) {
-            return PAGE_LABELS[trimmedPath] || trimmedPath;
-        }
-        
-        // Try with trailing slash added
-        const withSlash = cleanPath.endsWith('/') ? cleanPath : cleanPath + '/';
-        if (VALID_PAGES.has(withSlash)) {
-            return PAGE_LABELS[withSlash] || withSlash;
-        }
-        
-        // If path doesn't match a known valid route, normalize to 404
-        return '404';
-    }
+    const normalizePagePathForFailures = typeof analyticsUtils.normalizePagePath === 'function'
+        ? analyticsUtils.normalizePagePath
+        : (() => '404');
 
     // ==========================================
     // FAILURE EVENT NORMALIZATION
@@ -217,54 +161,106 @@ window.drawReliabilityDashboard = function(events) {
         }
     }
 
+    // ==========================================
+    // POPULATE RELIABILITY KPI METRICS
+    // ==========================================
+    
+    const totalFailures = normalizedFailures.length;
+    const affectedPages = failuresByPage.size;
+    
+    // Count unique sessions in the reliability dataset
+    const uniqueSessions = new Set();
+    events.forEach(ev => {
+        if (ev.session_id) {
+            uniqueSessions.add(ev.session_id);
+        }
+    });
+    const sessionCount = uniqueSessions.size;
+    const avgFailuresPerSession = sessionCount > 0 
+        ? (totalFailures / sessionCount).toFixed(2) 
+        : '0.00';
+    
+    // Update KPI cards
+    d3.select("#reliability-kpi-total").text(totalFailures);
+    d3.select("#reliability-kpi-pages").text(affectedPages);
+    d3.select("#reliability-kpi-avg-session").text(avgFailuresPerSession);
+
     // Draw charts if data exists
     if (normalizedFailures.length > 0) {
         drawFailureTypeChart(failuresByType, FAILURE_COLORS);
         drawFailureByPageChart(failuresByPage, FAILURE_COLORS, FAILURE_TYPES);
         drawTopBrokenUrlsChart(failuresByUrl, normalizedFailures, FAILURE_COLORS);
     }
+
+    generateReliabilityInsight(normalizedFailures, failuresByType, failuresByPage);
 };
+
+function upsertReliabilityInsightBox(text) {
+    const textarea = document.getElementById('reliability-comment');
+    if (!textarea) return;
+
+    const reportArea = textarea.closest('.report-input-area');
+    if (!reportArea) return;
+
+    let box = reportArea.querySelector('.auto-summary-box');
+    if (!box) {
+        box = document.createElement('div');
+        box.className = 'auto-summary-box';
+        reportArea.insertBefore(box, textarea);
+    }
+
+    box.textContent = text;
+}
+
+function generateReliabilityInsight(normalizedFailures, failuresByType, failuresByPage) {
+    const totalFailures = Array.isArray(normalizedFailures) ? normalizedFailures.length : 0;
+
+    if (totalFailures === 0) {
+        upsertReliabilityInsightBox('Automated Insight: No reliability failures were detected in the current 30-day window.');
+        return;
+    }
+
+    let topErrorType = 'Unknown';
+    let topErrorCount = -1;
+    failuresByType.forEach((count, type) => {
+        if (count > topErrorCount) {
+            topErrorCount = count;
+            topErrorType = type;
+        }
+    });
+
+    let topPage = 'Unknown';
+    let topPageCount = -1;
+    failuresByPage.forEach((typeMap, page) => {
+        let totalForPage = 0;
+        typeMap.forEach((count) => {
+            totalForPage += count;
+        });
+        if (totalForPage > topPageCount) {
+            topPageCount = totalForPage;
+            topPage = page;
+        }
+    });
+
+    const insight = `Automated Insight: ${totalFailures} failures detected. '${topErrorType}' is the most frequent issue, primarily affecting the '${topPage}' page.`;
+    upsertReliabilityInsightBox(insight);
+}
 
 // ==========================================
 // HELPERS: EVENT NORMALIZATION
 // ==========================================
 
 function extractPagePath(url) {
-    // Robust page path extraction with fallback logic
+    const analyticsUtils = window.AnalyticsUtils || {};
+    if (typeof analyticsUtils.extractPathFromUrl === 'function') {
+        return analyticsUtils.extractPathFromUrl(url);
+    }
     if (!url) return '/';
-    
     try {
         const urlObj = new URL(url, window.location.origin);
-        let pathname = urlObj.pathname || '/';
-        
-        // Normalize common patterns
-        if (pathname === '/' || pathname === '/index.html' || pathname === '/index.php') {
-            return '/';
-        }
-        
-        // Remove trailing slashes and query strings
-        pathname = pathname.replace(/\/$/, ''); // Remove trailing slash
-        pathname = pathname.split('?')[0].split('#')[0]; // Remove query/fragment
-
-        // Preserve meaningful path segments
-        // Examples: /products.html, /product-detail.html, /checkout.html, /test/products.html
-        return pathname || '/';
+        return urlObj.pathname || '/';
     } catch (e) {
-        // Fallback: try parsing as relative URL
-        try {
-            let path = url;
-            if (path.startsWith('http')) {
-                path = new URL(url).pathname;
-            } else if (path.startsWith('/')) {
-                // Already a path
-            } else {
-                path = '/' + path;
-            }
-            path = path.replace(/\/$/, '').split('?')[0].split('#')[0];
-            return path || '/';
-        } catch (e2) {
-            return '/';
-        }
+        return '/';
     }
 }
 
@@ -837,26 +833,6 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures, colorMap) {
             tooltip.style("opacity", 0);
         });
 
-    // URL labels - using cleaned display labels
-    svg.selectAll("text.url-label")
-        .data(urlStackData)
-        .join("text")
-        .attr("class", "url-label")
-        .attr("x", -8)
-        .attr("y", (d, i) => y(i) + y.bandwidth() / 2)
-        .attr("dy", "0.35em")
-        .attr("text-anchor", "end")
-        .attr("font-size", "11px")
-        .attr("fill", "#333")
-        .text(d => formatUrlLabel(d.url, 50))
-        .style("cursor", "pointer")
-        .on("mouseover", function() {
-            d3.select(this).attr("fill", "#0056b3").attr("font-weight", "600");
-        })
-        .on("mouseout", function() {
-            d3.select(this).attr("fill", "#333").attr("font-weight", "normal");
-        });
-
     // Count labels - positioned at end of bar
     svg.selectAll("text.count-label")
         .data(urlStackData)
@@ -898,5 +874,9 @@ function drawTopBrokenUrlsChart(failuresByUrl, allFailures, colorMap) {
         .call(d3.axisBottom(x).ticks(4));
 
     svg.append("g")
-        .call(d3.axisLeft(y).tickSizeOuter(0));
+        .call(
+            d3.axisLeft(y)
+                .tickSizeOuter(0)
+                .tickFormat(d => String(Number(d) + 1))
+        );
 }
